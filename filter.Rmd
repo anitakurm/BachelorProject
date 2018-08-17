@@ -1,0 +1,88 @@
+---
+title: "Data filtering"
+author: "Anita Kurm"
+date: "August 17, 2018"
+output: html_document
+---
+
+
+```{r}
+#libraries
+pacman::p_load(groupdata2,ggplot2,tidyverse,data.table,dplyr,tidyr,stringr, margittr,tidytext)
+
+#set wd
+setwd("C:/Users/JARVIS/Desktop/Uni/Thesis/data scraping/BachelorProject")
+
+#messy data
+md<- read.csv("ai.csv", header = F)
+```
+
+Trying to make it a tidy dataframe
+
+```{r}
+#remove all of unnecessary symbols
+#ref: ( Hicks , 2014) 
+#md$V2<- gsub("b'RT", " ", md$V2)
+#md$V2<- gsub("b'", " ", md$V2)
+#md$V2<- gsub("b\"", " ", md$V2)
+#md$V2<- gsub("(RT|via)((?:\\b\\W*@\\w+)+)", " ", md$V2)
+#md$V2<- gsub("@\\w+", " ", md$V2)
+#md$V2<- gsub("[[:punct:]]", " ", md$V2)
+#md$V2<- gsub("[[:digit:]]", " ", md$V2)
+#md$V2<- gsub("http\\w+", "", md$V2)
+#md$V2<- gsub("[ \t]{2,}", " ", md$V2)
+#md$V2<- gsub("^\\s+|\\s+$", " ", md$V2)
+
+
+
+
+#make a function instead
+messy_to_clean <- function(messytweetsvariable) {
+  symbolslist<-list("b'RT","b'","b\"","(RT|via)((?:\\b\\W*@\\w+)+)","@\\w+","[[:punct:]]","[[:digit:]]","http\\w+","[ \t]{2,}","^\\s+|\\s+$")
+  for(i in symbolslist){
+  messytweetsvariable <- gsub(i, " ", messytweetsvariable)
+  }
+  cleantweetsvariable<-messytweetsvariable
+  return(cleantweetsvariable)
+}
+
+#test it!
+md$V2<- messy_to_clean(md$V2)
+#it works!!!!!!
+
+#give ID to every tweet
+md$ID<- as.numeric(md$V1)
+
+#keep only unique tweets..OR IS IT NECESSARY????
+#d<-subset(md,!duplicated(md$ID))
+
+
+#break down tweets into separate words, keeping ID and timestamp
+List <- strsplit(md$V2, " ")
+words<-data.frame(ID=rep(md$ID, sapply(List, length)),Time=rep(md$V1, sapply(List, length)), Word=unlist(List))
+```
+
+
+Words dataframe still has non-words, empty rows...
+Adding a corpus should help?
+
+```{r}
+
+#from tidytext
+corpus1<-get_sentiments("nrc")
+colnames(corpus1)[1] <- "Word"
+
+
+#merge tweet words with corpus, leaving only words that are contained in both
+# merge two data frames by word
+total <- merge(words,corpus1, by="Word")
+total$sentiment<-as.factor(total$sentiment)
+
+
+#visualize it?
+ggplot(total, aes(total$Time, , color=sentiment )) +
+  geom_dotplot()
+
+
+```
+
