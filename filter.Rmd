@@ -60,6 +60,7 @@ md$ID<- as.numeric(md$V1)
 #break down tweets into separate words, keeping ID and timestamp
 List <- strsplit(md$V2, " ")
 words<-data.frame(ID=rep(md$ID, sapply(List, length)),Time=rep(md$V1, sapply(List, length)), Word=unlist(List))
+write.csv(words, "words.csv")
 ```
 
 
