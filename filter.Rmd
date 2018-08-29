@@ -82,7 +82,13 @@ total$sentiment<-as.factor(total$sentiment)
 
 #visualize it?
 ggplot(total, aes(total$Time, , color=sentiment )) +
-  geom_dotplot()
+  geom_dotplot()+
+  facet_wrap(~sentiment)
+
+
+#model. time~sentiment ?
+
+
 
 
 ```
