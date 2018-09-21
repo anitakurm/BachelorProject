@@ -1,0 +1,13 @@
+---
+title: "Analytics"
+author: "Anita Kurm"
+date: "September 21, 2018"
+output: html_document
+---
+Sentiment analysis
+```{r}
+#very basic: how many positive, how many negative, neutral
+#############look at some basic stats: % of lables <- 86.6% ham 13.4% spam
+#############prop.table(table(spam.raw$Label))
+```
+

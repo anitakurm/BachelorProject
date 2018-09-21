@@ -67,5 +67,34 @@ prop.table(table(test$Label))
 
 ```
 
+Pre-processing, cleaning
+```{r}
+#an example of text with HTML-escaped ampersand character 
+train$Text[21] #'&amp'
+
+#an example of text with HTML-escaped '<'=&lt; and '>'=&gt characters
+train$Text[38]
+
+#an example of text with a URL
+train$Text[357]
+
+
+#Simple tokenization, removing everything but words
+train.tokens<- tokens(train$Text, what="word", remove_numbers=T, remove_punct=T, remove_symbols=T,remove_hyphens=T)
+
+#take a peek on an example of tokenized document
+train.tokens[357]
+
+#lower case the tokens
+train.tokens<- tokens_tolower(train.tokens)
+train.tokens[357]
+
+
+#STOPwords - common words that don't add anything in terms of semantics, meaning, predictive power
+# check what stopword lists are applicable to your domain
+#quantedaÆ ready stopword function
+train.tokens<- tokens_select(train.tokens, stopwords(),selection = "remove")
+train.tokens[357]
+```
 
 
