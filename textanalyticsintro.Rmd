@@ -1,0 +1,23 @@
+---
+title: "TextAnalytics"
+author: "Anita Kurm"
+date: "September 21, 2018"
+output: html_document
+---
+
+```{r}
+#libraries
+pacman::p_load(ggplot2,e1071,caret,quanteda,irlba, randomForest)
+
+#set wd
+setwd("C:/Users/JARVIS/Desktop/Uni/Thesis/data scraping/BachelorProject")
+
+#messy data
+spam.raw<- read.csv("spam.csv", header = F)
+```
+
+
+```{r}
+
+```
+
