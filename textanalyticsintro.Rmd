@@ -13,11 +13,59 @@ pacman::p_load(ggplot2,e1071,caret,quanteda,irlba, randomForest)
 setwd("C:/Users/JARVIS/Desktop/Uni/Thesis/data scraping/BachelorProject")
 
 #messy data
-spam.raw<- read.csv("spam.csv", header = F)
-```
+spam.raw<- read.csv("spam.csv", header = T, stringsAsFactors = F)
 
+#omit last columns, just keep 1 and 2 columns
+spam.raw<-spam.raw[,1:2]
+#rename columns
+names(spam.raw)<- c("Label", "Text")
+
+#do we have missing values in our data? Before we start any modeling!
+length(which(!complete.cases(spam.raw)))
+#nope!
+
+#our labels are factors!
+spam.raw$Label<- as.factor(spam.raw$Label)
+```
+Explore data!
 
 ```{r}
+#look at some basic stats: % of lables <- 86.6% ham 13.4% spam
+prop.table(table(spam.raw$Label))
+
+#distribution of text string lengths (nchar for count the number of characters)  <- craete a column for it too
+spam.raw$TextLength<- nchar(spam.raw$Text)
+summary(spam.raw$TextLength)
+
+#visualize this distribution
+lengthplot<- ggplot(spam.raw, aes(x=TextLength, fill=Label))+
+  theme_bw()+
+  geom_histogram(binwidth = 5)+
+  labs(x="Length of text", y="Text count", title="Distribution of text lengths with class labels")
+lengthplot
+```
+Most of spam texts are 125ish character long - useful info for classification tasks
+
+
+Project: Training, validating, testing -> 3 chunks of data for each step, each being representative of original data (i.e. stratified split) 
+Learn the caret package!
+```{r}
+#use caret to divide the dataset into training and testing datasets
+#we create a 70%/30% stratified split. Set the random #seed for reproducibility
+set.seed(32984)
+indexes<- createDataPartition(spam.raw$Label, times = 1, p=0.7,list = F) #spam.raw$Label indicated which variable proportions should be considered for stratified split
+
+#create training dataset containing 70% of dataset with the same proportion of labels as in the original one
+train<- spam.raw[indexes,] #filter the dataset by chosen indexes
+
+#create test dataset containing the rest of dataset with the same proportion of labels as in the original one
+test<- spam.raw[-indexes,]
+
+#verify proportions
+prop.table(table(train$Label))
+prop.table(table(test$Label))
 
 ```
+
+
 
