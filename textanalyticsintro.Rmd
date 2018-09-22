@@ -7,7 +7,7 @@ output: html_document
 
 ```{r}
 #libraries
-pacman::p_load(ggplot2,e1071,caret,quanteda,irlba, randomForest)
+pacman::p_load(ggplot2,e1071,caret,quanteda,irlba, randomForest, doSNOW)
 
 #set wd
 setwd("C:/Users/JARVIS/Desktop/Uni/Thesis/data scraping/BachelorProject")
@@ -95,6 +95,90 @@ train.tokens[357]
 #quantedaÆ ready stopword function
 train.tokens<- tokens_select(train.tokens, stopwords(),selection = "remove")
 train.tokens[357]
+
+
+#stemming - transforming all different forms of a word into the standard form
+train.tokens<- tokens_wordstem(train.tokens,language = "english")
+train.tokens[357]
+```
+
+DATA IS PREPROCESSED NOW
+
+Now it's time for a bag-of-words model:
+```{r}
+#create document frequency matrix step 1
+train.tokens.dfm<- dfm(train.tokens, tolower = F)
+#create document frequecny matrix step 2
+train.tokens.matrix<-as.matrix(train.tokens.dfm)
+#don't view the entire matrix!!! too large
+
+#a peek at matrix
+View(train.tokens.matrix[1:20, 1:100])
+#look up dimensions of matrix. so many columns!!
+dim(train.tokens.matrix)
+#investigate the effects of stemming
+colnames(train.tokens.matrix)[1:50]
+
+####Per best practices, cross-validation will be used as the basis of the modelling process. Cross-validation allows to estimate performance of a model on newly obtained dataset. Limitations of cross-validation are computational expenses and relatively large time consumption
+#more info: https://en.wikipedia.org/wiki/Cross-validation_(statistics)
+
+
+
+#set up the feature data frame with labels: document frequency matrix into a dataframe with labels
+train.tokens.df <- cbind(Label=train$Label, as.data.frame(train.tokens.dfm))
+
+#often we can't just start building models, tokenization requires additional processing
+names(train.tokens.df)[c(146,148,235,238)]
+#we need to fix these..
+
+#clean up column names
+names(train.tokens.df)<-make.names(names(train.tokens.df))
+#so what did it change?
+names(train.tokens.df)[c(146,148,235,238)]
+
+#document as factor
+train.tokens.df$document<- as.factor(train.tokens.df$document)
+
+###################### STRATIFIED CROSS-VALIDATION####################
+#use caret to create stratified folds for 10-fold cross validation repeated 3 times (i.e. create 30 random stratified samples)
+#repeated cross-validation process will get more valid estomates, estimation process will be more robust
+#repeated cross-validaton is esp. reasonable for class imbalance problems
+#computational hit tho..
+#set seed for reproducibility
+set.seed(48743)
+#splitting data into multiple startisfied samples by label proportions (look above for 10 folds repeated 3 times)
+cv.folds<- createMultiFolds(train$Label, k=10, times = 3) 
+
+#setting the training process repeated cross validation process. 3 repetitions, we need to specify stratified earlier folds if we dont want just random folds
+cv.cntrl<- trainControl(method = "repeatedcv", number = 10, repeats = 3, index = cv.folds)
+
+#use doSNOW package: library(doSNOW) to run, train in caret in parallel to speed up cross.validation process: assign diff processes to diff cores 
+
+#Time the code execution
+start.time <- Sys.time()
+
+#create a cluster to work on 2 logical cores; Socket clusters 
+cl <- makeCluster(2, type = "SOCK") #be careful with this
+registerDoSNOW(cl) #register the cluster! Super important to include in the code to run stuff in parallel
+
+
+#our data is non-trivial in size -> use a single decision tree algorithm as our first model
+#what kind of machnie learning model we want to use: method - rpart tree (single decision tree, simpler algorithm) #look up caret methods
+#random forest are multiple decision trees
+#predict label by all the rest of data (.), train function = train control (the process we defined before), tuneLength= pls try 7 different configuration of rprt algoithm, find out which one works the best <- HYPERPARAMETER TUNING
+rpart.cv.1<- train(Label ~ . , data=train.tokens.df, method="rpart", trControl=cv.cntrl, tuneLength =7)
+
+#Processing is done, stop cluster
+stopCluster(cl)
+
+#Total time of executon
+total.time <- Sys.time() - start.time
+total.time
+
+#check out the cv results
+rpart.cv.1
+
+
 ```
 
 
