@@ -406,3 +406,43 @@ names(train.tokens.tfidf.df) <- make.names(names(train.tokens.tfidf.df))
 gc()
 ```
 
+More:
+```{r}
+#
+# NOTE - The following code requires the use of command-line R to execute
+#        due to the large number of features (i.e., columns) in the matrix.
+#        Please consult the following link for more details if you wish
+#        to run the code yourself:
+#
+#        https://stackoverflow.com/questions/28728774/how-to-set-max-ppsize-in-r
+#
+#        Also note that running the following code required approximately
+#        38GB of RAM and more than 4.5 hours to execute on a 10-core 
+#        workstation!
+#
+
+
+# Time the code execution
+# start.time <- Sys.time()
+
+# Leverage single decision trees to evaluate if adding bigrams improves the 
+# the effectiveness of the model.
+# rpart.cv.3 <- train(Label ~ ., data = train.tokens.tfidf.df, method = "rpart", 
+#                     trControl = cv.cntrl, tuneLength = 7)
+
+# Total time of execution on workstation was
+# total.time <- Sys.time() - start.time
+# total.time
+
+# Check out our results.
+# rpart.cv.3
+
+#
+# The results of the above processing show a slight decline in rpart 
+# effectiveness with a 10-fold CV repeated 3 times accuracy of 0.9457.
+# As we will discuss later, while the addition of bigrams appears to 
+# negatively impact a single decision tree, it helps with the mighty
+# random forest!
+# 
+```
+
