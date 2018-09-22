@@ -364,7 +364,7 @@ N-grams!
 # transform the expanded featre matrix to see if accuracy improves.
 
 # Add bigrams to our feature matrix.
-train.tokens <- tokens_ngrams(train.tokens, n = 1:2) #unigrams and bigrams 1:5 <- uni, bi, tri, qudro, fivegrams
+train.tokens <- tokens_ngrams(train.tokens, n = 2) #unigrams and bigrams 1:5 <- uni, bi, tri, qudro, fivegrams
 #write n=2 if you want just bigrams
 train.tokens[[357]]
 
