@@ -170,6 +170,7 @@ View(train.tokens.matrix[1:20, 1:100])
 dim(train.tokens.matrix)
 
 
+
 # Investigate the effects of stemming.
 colnames(train.tokens.matrix)[1:50]
 
@@ -197,6 +198,8 @@ names(train.tokens.df)[c(146, 148, 235, 238)]
 # Cleanup column names.
 names(train.tokens.df) <- make.names(names(train.tokens.df))
 
+write.csv(train.tokens.df, file = "traintokensdf.csv")
+
 
 # Use caret to create stratified folds for 10-fold cross validation repeated 
 # 3 times (i.e., create 30 random stratified samples)
@@ -215,37 +218,191 @@ cv.cntrl <- trainControl(method = "repeatedcv", number = 10,
 #           or server-class machine (i.e., 12 logical cores). Alter
 #           code to suit your HW environment.
 #
-#install.packages("doSNOW")
-library(doSNOW)
+# #install.packages("doSNOW")
+# library(doSNOW)
+# 
+# 
+# # Time the code execution
+# start.time <- Sys.time()
+# 
+# 
+# # Create a cluster to work on 2 logical cores.
+# cl <- makeCluster(2, type = "SOCK")
+# registerDoSNOW(cl)
+# 
+# 
+# # As our data is non-trivial in size at this point, use a single decision
+# # tree alogrithm as our first model. We will graduate to using more 
+# # powerful algorithms later when we perform feature extraction to shrink
+# # the size of our data.
+# rpart.cv.1 <- train(Label ~ ., data = train.tokens.df, method = "rpart", 
+#                     trControl = cv.cntrl, tuneLength = 7)
+# 
+# 
+# # Processing is done, stop cluster.
+# stopCluster(cl)
+# 
+# 
+# # Total time of execution on workstation was approximately 4 minutes. 
+# total.time <- Sys.time() - start.time
+# total.time
+# 
+# 
+# # Check out our results.
+# rpart.cv.1
+```
+does not work for me for some reason...
+NEW PART
 
 
+```{r}
+# The use of Term Frequency-Inverse Document Frequency (TF-IDF) is a 
+# powerful technique for enhancing the information/signal contained
+# within our document-frequency matrix. Specifically, the mathematics
+# behind TF-IDF accomplish the following goals:
+#    1 - The TF calculation accounts for the fact that longer 
+#        documents will have higher individual term counts. Applying
+#        TF normalizes all documents in the corpus to be length 
+#        independent.
+#    2 - The IDF calculation accounts for the frequency of term
+#        appearance in all documents in the corpus. The intuition 
+#        being that a term that appears in every document has no
+#        predictive power.
+#    3 - The multiplication of TF by IDF for each cell in the matrix
+#        allows for weighting of #1 and #2 for each cell in the matrix.
+
+
+# Our function for calculating relative term frequency (TF)
+term.frequency <- function(row) {
+  row / sum(row)
+}
+
+# Our function for calculating inverse document frequency (IDF)
+inverse.doc.freq <- function(col) {
+  corpus.size <- length(col)
+  doc.count <- length(which(col > 0))
+
+  log10(corpus.size / doc.count)
+}
+
+# Our function for calculating TF-IDF.
+tf.idf <- function(tf, idf) {
+  tf * idf
+}
+
+# First step, normalize all documents via TF.
+train.tokens.df <- apply(train.tokens.matrix, 1, term.frequency)
+dim(train.tokens.df)
+View(train.tokens.df[1:20, 1:100])
+
+
+# Second step, calculate the IDF vector that we will use - both
+# for training data and for test data!
+train.tokens.idf <- apply(train.tokens.matrix, 2, inverse.doc.freq)
+str(train.tokens.idf)
+
+
+# Lastly, calculate TF-IDF for our training corpus.
+train.tokens.tfidf <-  apply(train.tokens.df, 2, tf.idf, idf = train.tokens.idf)
+dim(train.tokens.tfidf)
+View(train.tokens.tfidf[1:25, 1:25])
+
+
+# Transpose the matrix
+train.tokens.tfidf <- t(train.tokens.tfidf)
+dim(train.tokens.tfidf)
+View(train.tokens.tfidf[1:25, 1:25])
+
+
+# Check for incopmlete cases.
+incomplete.cases <- which(!complete.cases(train.tokens.tfidf))
+train$Text[incomplete.cases]
+
+
+# Fix incomplete cases
+train.tokens.tfidf[incomplete.cases,] <- rep(0.0, ncol(train.tokens.tfidf))
+dim(train.tokens.tfidf)
+sum(which(!complete.cases(train.tokens.tfidf)))
+
+
+# Make a clean data frame using the same process as before.
+train.tokens.tfidf.df <- cbind(Label = train$Label, data.frame(train.tokens.tfidf))
+names(train.tokens.tfidf.df) <- make.names(names(train.tokens.tfidf.df))
+
+#################################### CROSS-VALIDATION AGAIN #################################33
 # Time the code execution
 start.time <- Sys.time()
-
 
 # Create a cluster to work on 2 logical cores.
 cl <- makeCluster(2, type = "SOCK")
 registerDoSNOW(cl)
 
-
 # As our data is non-trivial in size at this point, use a single decision
 # tree alogrithm as our first model. We will graduate to using more 
 # powerful algorithms later when we perform feature extraction to shrink
 # the size of our data.
-rpart.cv.1 <- train(Label ~ ., data = train.tokens.df, method = "rpart", 
+rpart.cv.2 <- train(Label ~ ., data = train.tokens.tfidf.df, method = "rpart", 
                     trControl = cv.cntrl, tuneLength = 7)
-
 
 # Processing is done, stop cluster.
 stopCluster(cl)
 
-
-# Total time of execution on workstation was approximately 4 minutes. 
+# Total time of execution on workstation was 
 total.time <- Sys.time() - start.time
 total.time
 
-
 # Check out our results.
-rpart.cv.1
+rpart.cv.2
+```
+
+N-grams!
+```{r}
+# N-grams allow us to augment our document-term frequency matrices with
+# word ordering. This often leads to increased performance (e.g., accuracy)
+# for machine learning models trained with more than just unigrams (i.e.,
+# single terms). Let's add bigrams to our training data and the TF-IDF 
+# transform the expanded featre matrix to see if accuracy improves.
+
+# Add bigrams to our feature matrix.
+train.tokens <- tokens_ngrams(train.tokens, n = 1:2) #unigrams and bigrams 1:5 <- uni, bi, tri, qudro, fivegrams
+#write n=2 if you want just bigrams
+train.tokens[[357]]
+
+
+# Transform to dfm and then a matrix.
+train.tokens.dfm <- dfm(train.tokens, tolower = FALSE)
+train.tokens.matrix <- as.matrix(train.tokens.dfm)
+train.tokens.dfm
+
+
+# Normalize all documents via TF.
+train.tokens.df <- apply(train.tokens.matrix, 1, term.frequency)
+
+  
+# Calculate the IDF vector that we will use for training and test data!
+train.tokens.idf <- apply(train.tokens.matrix, 2, inverse.doc.freq)
+
+  
+# Calculate TF-IDF for our training corpus 
+train.tokens.tfidf <-  apply(train.tokens.df, 2, tf.idf, 
+                             idf = train.tokens.idf)
+
+  
+# Transpose the matrix
+train.tokens.tfidf <- t(train.tokens.tfidf)
+
+  
+# Fix incomplete cases
+incomplete.cases <- which(!complete.cases(train.tokens.tfidf))
+train.tokens.tfidf[incomplete.cases,] <- rep(0.0, ncol(train.tokens.tfidf))
+
+
+# Make a clean data frame.
+train.tokens.tfidf.df <- cbind(Label = train$Label, data.frame(train.tokens.tfidf))
+names(train.tokens.tfidf.df) <- make.names(names(train.tokens.tfidf.df))
+
+
+# Clean up unused objects in memory.
+gc()
 ```
 
