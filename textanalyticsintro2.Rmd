@@ -200,14 +200,14 @@ names(train.tokens.df) <- make.names(names(train.tokens.df))
 
 write.csv(train.tokens.df, file = "traintokensdf.csv")
 
-
-# Use caret to create stratified folds for 10-fold cross validation repeated 
-# 3 times (i.e., create 30 random stratified samples)
-set.seed(48743)
-cv.folds <- createMultiFolds(train$Label, k = 10, times = 3)
-
-cv.cntrl <- trainControl(method = "repeatedcv", number = 10,
-                         repeats = 3, index = cv.folds)
+# 
+# # Use caret to create stratified folds for 10-fold cross validation repeated 
+# # 3 times (i.e., create 30 random stratified samples)
+# set.seed(48743)
+# cv.folds <- createMultiFolds(train$Label, k = 10, times = 3)
+# 
+# cv.cntrl <- trainControl(method = "repeatedcv", number = 10,
+#                          repeats = 3, index = cv.folds)
 
 
 # Our data frame is non-trivial in size. As such, CV runs will take 
@@ -329,30 +329,30 @@ sum(which(!complete.cases(train.tokens.tfidf)))
 train.tokens.tfidf.df <- cbind(Label = train$Label, data.frame(train.tokens.tfidf))
 names(train.tokens.tfidf.df) <- make.names(names(train.tokens.tfidf.df))
 
-#################################### CROSS-VALIDATION AGAIN #################################33
-# Time the code execution
-start.time <- Sys.time()
-
-# Create a cluster to work on 2 logical cores.
-cl <- makeCluster(2, type = "SOCK")
-registerDoSNOW(cl)
-
-# As our data is non-trivial in size at this point, use a single decision
-# tree alogrithm as our first model. We will graduate to using more 
-# powerful algorithms later when we perform feature extraction to shrink
-# the size of our data.
-rpart.cv.2 <- train(Label ~ ., data = train.tokens.tfidf.df, method = "rpart", 
-                    trControl = cv.cntrl, tuneLength = 7)
-
-# Processing is done, stop cluster.
-stopCluster(cl)
-
-# Total time of execution on workstation was 
-total.time <- Sys.time() - start.time
-total.time
-
-# Check out our results.
-rpart.cv.2
+# #################################### CROSS-VALIDATION AGAIN #################################33
+# # Time the code execution
+# start.time <- Sys.time()
+# 
+# # Create a cluster to work on 2 logical cores.
+# cl <- makeCluster(2, type = "SOCK")
+# registerDoSNOW(cl)
+# 
+# # As our data is non-trivial in size at this point, use a single decision
+# # tree alogrithm as our first model. We will graduate to using more 
+# # powerful algorithms later when we perform feature extraction to shrink
+# # the size of our data.
+# rpart.cv.2 <- train(Label ~ ., data = train.tokens.tfidf.df, method = "rpart", 
+#                     trControl = cv.cntrl, tuneLength = 7)
+# 
+# # Processing is done, stop cluster.
+# stopCluster(cl)
+# 
+# # Total time of execution on workstation was 
+# total.time <- Sys.time() - start.time
+# total.time
+# 
+# # Check out our results.
+# rpart.cv.2
 ```
 
 N-grams!
@@ -402,8 +402,8 @@ train.tokens.tfidf.df <- cbind(Label = train$Label, data.frame(train.tokens.tfid
 names(train.tokens.tfidf.df) <- make.names(names(train.tokens.tfidf.df))
 
 
-# Clean up unused objects in memory.
-gc()
+# # Clean up unused objects in memory.
+# gc()
 ```
 
 More:
@@ -444,5 +444,223 @@ More:
 # negatively impact a single decision tree, it helps with the mighty
 # random forest!
 # 
+```
+
+Reduce dimensionality: LSA
+```{r}
+# We'll leverage the irlba package for our singular value 
+# decomposition (SVD). The irlba package allows us to specify
+# the number of the most important singular vectors we wish to
+# calculate and retain for features.
+pacman::p_load(irlba)
+
+
+# Time the code execution
+start.time <- Sys.time()
+
+# Perform SVD. Specifically, reduce dimensionality down to 300 columns
+# for our latent semantic analysis (LSA).
+train.irlba <- irlba(t(train.tokens.tfidf), nv = 300, maxit = 600)
+
+# Total time of execution on workstation was 
+total.time <- Sys.time() - start.time
+total.time
+
+
+# Take a look at the new feature data up close.
+View(train.irlba$v)
+
+
+# As with TF-IDF, we will need to project new data (e.g., the test data)
+# into the SVD semantic space. The following code illustrates how to do
+# this using a row of the training data that has already been transformed
+# by TF-IDF, per the mathematics illustrated in the slides.
+#
+#
+sigma.inverse <- 1 / train.irlba$d
+u.transpose <- t(train.irlba$u)
+document <- train.tokens.tfidf[1,]
+document.hat <- sigma.inverse * u.transpose %*% document
+
+# Look at the first 10 components of projected document and the corresponding
+# row in our document semantic space (i.e., the V matrix)
+document.hat[1:10]
+train.irlba$v[1, 1:10]
+
+
+
+#
+# Create new feature data frame using our document semantic space of 300
+# features (i.e., the V matrix from our SVD).
+#
+train.svd <- data.frame(Label = train$Label, train.irlba$v)
+
+
+# Create a cluster to work on 10 logical cores.
+cl <- makeCluster(3, type = "SOCK")
+registerDoSNOW(cl)
+
+set.seed(48743)
+cv.folds <- createMultiFolds(train$Label, k = 5, times = 2)
+
+cv.cntrl <- trainControl(method = "repeatedcv", number = 5,
+                         repeats = 2, index = cv.folds)
+
+# Time the code execution
+start.time <- Sys.time()
+
+# This will be the last run using single decision trees. With a much smaller
+# feature matrix we can now use more powerful methods like the mighty Random
+# Forest from now on!
+rpart.cv.4 <- train(Label ~ ., data = train.svd, method = "rpart", 
+                    trControl = cv.cntrl, tuneLength = 1)
+
+# Processing is done, stop cluster.
+stopCluster(cl)
+
+# Total time of execution on workstation was 
+total.time <- Sys.time() - start.time
+total.time
+
+# Check out our results.
+rpart.cv.4
+
+```
+
+```{r}
+#
+# NOTE - The following code takes a long time to run. Here's the math.
+#        We are performing 10-fold CV repeated 3 times. That means we
+#        need to build 30 models. We are also asking caret to try 7 
+#        different values of the mtry parameter. Next up by default
+#        a mighty random forest leverages 500 trees. Lastly, caret will
+#        build 1 final model at the end of the process with the best 
+#        mtry value over all the training data. Here's the number of 
+#        tree we're building:
+#
+#             (10 * 3 * 7 * 500) + 500 = 105,500 trees!
+#
+# On a workstation using 10 cores the following code took 28 minutes 
+# to execute.
+#
+
+
+# Create a cluster to work on 10 logical cores.
+# cl <- makeCluster(10, type = "SOCK")
+# registerDoSNOW(cl)
+
+# Time the code execution
+# start.time <- Sys.time()
+
+# We have reduced the dimensionality of our data using SVD. Also, the 
+# application of SVD allows us to use LSA to simultaneously increase the
+# information density of each feature. To prove this out, leverage a 
+# mighty Random Forest with the default of 500 trees. We'll also ask
+# caret to try 7 different values of mtry to find the mtry value that 
+# gives the best result!
+# rf.cv.1 <- train(Label ~ ., data = train.svd, method = "rf", 
+#                 trControl = cv.cntrl, tuneLength = 7)
+
+# Processing is done, stop cluster.
+# stopCluster(cl)
+
+# Total time of execution on workstation was 
+# total.time <- Sys.time() - start.time
+# total.time
+
+# Load processing results from disk!
+load("rf.cv.1.RData")
+
+# Check out our results.
+rf.cv.1
+
+# Let's drill-down on the results.
+confusionMatrix(train.svd$Label, rf.cv.1$finalModel$predicted)
+
+
+
+
+
+# OK, now let's add in the feature we engineered previously for SMS 
+# text length to see if it improves things.
+train.svd$TextLength <- train$TextLength
+
+
+# Create a cluster to work on 10 logical cores.
+# cl <- makeCluster(10, type = "SOCK")
+# registerDoSNOW(cl)
+
+# Time the code execution
+# start.time <- Sys.time()
+
+# Re-run the training process with the additional feature.
+# rf.cv.2 <- train(Label ~ ., data = train.svd, method = "rf",
+#                 trControl = cv.cntrl, tuneLength = 7, 
+#                 importance = TRUE)
+
+# Processing is done, stop cluster.
+# stopCluster(cl)
+
+# Total time of execution on workstation was 
+# total.time <- Sys.time() - start.time
+# total.time
+
+# Load results from disk.
+load("rf.cv.2.RData")
+
+# Check the results.
+rf.cv.2
+
+# Drill-down on the results.
+confusionMatrix(train.svd$Label, rf.cv.2$finalModel$predicted)
+
+# How important was the new feature?
+library(randomForest)
+varImpPlot(rf.cv.1$finalModel)
+varImpPlot(rf.cv.2$finalModel)
+
+
+
+
+# Turns out that our TextLength feature is very predictive and pushed our
+# overall accuracy over the training data to 97.1%. We can also use the
+# power of cosine similarity to engineer a feature for calculating, on 
+# average, how alike each SMS text message is to all of the spam messages.
+# The hypothesis here is that our use of bigrams, tf-idf, and LSA have 
+# produced a representation where ham SMS messages should have low cosine
+# similarities with spam SMS messages and vice versa.
+
+```
+
+
+Cosine similarity over the dot product!
+```{r}
+# Use the lsa package's cosine function for our calculations.
+#install.packages("lsa")
+pacman::p_load(lsa)
+
+train.similarities <- cosine(t(as.matrix(train.svd[, -c(1, ncol(train.svd))])))
+
+
+# Next up - take each SMS text message and find what the mean cosine 
+# similarity is for each SMS text mean with each of the spam SMS messages.
+# Per our hypothesis, ham SMS text messages should have relatively low
+# cosine similarities with spam messages and vice versa!
+spam.indexes <- which(train$Label == "spam")
+
+train.svd$SpamSimilarity <- rep(0.0, nrow(train.svd))
+for(i in 1:nrow(train.svd)) {
+  train.svd$SpamSimilarity[i] <- mean(train.similarities[i, spam.indexes])  
+}
+
+
+# As always, let's visualize our results using the mighty ggplot2
+ggplot(train.svd, aes(x = SpamSimilarity, fill = Label)) +
+  theme_bw() +
+  geom_histogram(binwidth = 0.05) +
+  labs(y = "Message Count",
+       x = "Mean Spam Message Cosine Similarity",
+       title = "Distribution of Ham vs. Spam Using Spam Cosine Similarity")
+
 ```
 
