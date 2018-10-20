@@ -83,6 +83,9 @@ timeplot <-ggplot(ds2,aes(x=ds2$Incident.Date, y=Total, color=Total, size=Total)
        title = "Number of victims plotted against timeline of corresponding incidents")
 timeplot
 
+
+
+
 ```
 
 Timeline recipe from the web:
