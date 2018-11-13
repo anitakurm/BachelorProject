@@ -1,0 +1,94 @@
+---
+title: "Sentiment analysis"
+author: "Anita Kurm"
+date: "October 21, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(yaml)
+pacman::p_load(dplyr)
+
+data<-yaml.load_file("guncontrol.yaml")
+
+
+#####Try to extract a tweet
+#Step 1: extract a single tweet whole data
+data2<- data[[1]]
+#Step 2: extract everything but the 'state' list
+data3<- data2$dictitems
+#Step 3: extract datetime (created_at) and text (text)
+data4<-c(data3$created_at,data3$id_str,data3$retweeted,data3$text)
+#Cosmetic
+data5<-as.matrix(data4)
+data5<-t(data5)
+data6<-as.data.frame(data5)
+colnames(data6)<-c("Datetime","ID","Retweet","Text")
+
+#success!
+d<-data6
+data2<-NULL
+data3<-NULL
+data4<-NULL
+data5<-NULL
+data6<-NULL
+
+#trying empty dataframe
+df<-NULL
+df <- data.frame(Date=as.Date(character()),
+                 ID=character(), 
+                 Retweet=character(),
+                 Text=character())
+
+colnames(df)<-c("Datetime","ID","Retweet","Text")
+
+datalist = list()
+#let's make a loop that will append info from each tweet to the dataframe
+for (tweetdata in data){                        #'tweetdata' contains all info on a single tweet
+  temporary<-tweetdata$dictitems                #'temporary' contains all info except the state list
+  temporary2<-c(temporary$created_at,temporary$id_str,temporary$retweeted,temporary$text) 
+  datalist <- datalist+temporary2
+#  df<-rbind(df,temporary2)
+# 
+#   colnames(df)<-c("Datetime","ID","Retweet","Text") #resetting names
+#   print(df)
+}
+#https://stackoverflow.com/questions/26508519/how-to-add-elements-to-a-list-in-r-loop
+
+df<-rbind(df,temporary2)
+
+datalist = list()
+
+for (i in 1:5) {
+    # ... make some data
+    dat <- data.frame(x = rnorm(10), y = runif(10))
+    dat$i <- i  # maybe you want to keep track of which iteration produced it?
+    datalist[[i]] <- dat # add it to your list
+}
+
+
+```
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
