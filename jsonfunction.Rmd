@@ -46,16 +46,39 @@ json_to_data<-function(json_file){
   gundata<-dplyr::filter(df, grepl('gun|guns|gundebate|2A|2ndamendment|guncontrol|gunsense|gunban|gunsafety|gunrights|NRA|2AShallNotBeInfringed|shooting', Text))
   return(gundata)
 }
-
-
-
-################################# Now run the function
-pacman::p_load(jsonlite,dplyr)
-
-#set wd
-setwd("C:/Users/JARVIS/Desktop/Uni/Thesis/data scraping")
-
-#apply the function on a json file
-data<-json_to_data("00.json")
 ```
+
+Make a loop to go through the folder
+
+```{r}
+path = "~/14"
+file.names <- dir(path, pattern =".json")
+for(i in 1:length(file.names)){
+  json_to_data(i)
+}
+
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+
+for (day in list.dirs(recursive=FALSE)) { #access a day in february
+   ## do stuff
+  for (hour in list.dirs(recursive = FALSE)){ #access an hour in a day
+    file.names <- dir(hour, pattern =".json")
+    for(i in 1:length(file.names)){
+      tinydata<-json_to_data(i)
+      bigdata<-rbind(bigdata,tinydata)
+    # for (jsonfile in hour) { #access a file in an hour, shouldn't be compressed
+    #   tinydata<-json_to_data(jsonfile)
+    #   bigdata<-rbind(bigdata,tinydata)
+    }
+  }
+}
+
+```
+
 
