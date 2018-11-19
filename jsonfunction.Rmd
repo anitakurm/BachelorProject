@@ -1,0 +1,61 @@
+---
+title: "Learning to filter tweets"
+author: "Anita Kurm"
+date: "November 19, 2018"
+output: html_document
+---
+
+```{r}
+##########################Defining the function
+
+json_to_data<-function(json_file){
+  df<-NULL
+  df <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+  colnames(df)<-c("Datetime","ID","Text","Language")
+  jsond<-lapply(readLines(json_file), fromJSON)
+  for (tweet in jsond){
+  x=length(tweet)
+  if(x < 2){
+    next
+    } else {
+      y<-tweet$lang
+      if(y=="en"){
+        userinfo<-tweet$user
+        if(('extended_tweet' %in% tweet)){
+          tweettextlist<-tweet$extended_tweet
+          tweettext<-tweettextlist$full_text
+        } else{
+          tweettext<-tweet$text
+        }
+          temporary<-c(tweet$created_at,userinfo$screen_name,tweettext, tweet$lang)
+          temporary2<-as.matrix(temporary)
+          temp3<-t(temporary2)
+          tempdata<-as.data.frame(temp3)
+          colnames(tempdata)<-c("Datetime","ID","Text","Language")
+          df<-rbind(df,tempdata)
+          colnames(df)<-c("Datetime","ID","Text","Language") #resetting names
+        
+      } else{
+        next}
+      }
+}
+  
+  gundata<-dplyr::filter(df, grepl('gun|guns|gundebate|2A|2ndamendment|guncontrol|gunsense|gunban|gunsafety|gunrights|NRA|2AShallNotBeInfringed|shooting', Text))
+  return(gundata)
+}
+
+
+
+################################# Now run the function
+pacman::p_load(jsonlite,dplyr)
+
+#set wd
+setwd("C:/Users/JARVIS/Desktop/Uni/Thesis/data scraping")
+
+#apply the function on a json file
+data<-json_to_data("00.json")
+```
+
