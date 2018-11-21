@@ -1,0 +1,97 @@
+---
+title: "loadsentiment"
+author: "Anita Kurm"
+date: "November 20, 2018"
+output: html_document
+---
+
+
+Sentiment data arrived
+```{r}
+pacman::p_load(ggplot2,dplyr)
+
+#set wd
+setwd("C:/Users/JARVIS/Desktop/Uni/Thesis/data scraping/BachelorProject")
+
+#try load sentiment data
+d<-read.csv("bigdata1to5sentiment.csv")
+
+#filter round 2
+hashtagd<-dplyr::filter(d, grepl('firearm|#gun|#guns|#gundebate|gun debate|#2A|2ndamendment|guncontrol|gun control|gunsense|gun sense|gunban|gun ban|gunsafety|gun safety|gunrights|gun rights|#NRA|2AShallNotBeInfringed|#shooting', Tweet))
+
+
+hashtagd$Datetime2<-as.character.Date(hashtagd$Datetime)
+#remove +0000
+hashtagd$Datetime2<-sub('\\+0000', '', hashtagd$Datetime2) # Changes only the 1st pattern match per string
+hashtagd$Datetime2<- as.POSIXct(hashtagd$Datetime2, format="%a %b %d %H:%M:%S %Y") #format="%A %M %d %H:%M:%S %Y"
+
+#dplyr library; removing repeating tweets
+uniquehashtagd<- hashtagd %>% 
+    group_by(Tweet) %>%
+    slice(1L)
+
+hashtagd$day<-format(hashtagd$Datetime2, "%d")
+
+#find the mean per day
+stats<-hashtagd %>%
+  group_by(day) %>%
+  summarise(mean=mean(Compound), SD=sd(Compound), MIN=min(Compound),MAX=max(Compound), VAR=var(Compound), COUNT=n())
+
+merged<-merge(hashtagd,stats)
+
+
+```
+
+Some visualizations
+```{r}
+#compound scores through the time
+ggplot(hashtagd, aes(x = Datetime2, y = Compound))+
+  geom_smooth() +
+  geom_point()+
+  theme_minimal()+
+  ggtitle("Compound scores plotted against timeline: view 2")
+
+#compound scores through the time
+ggplot(uniquehashtagd, aes(x = Datetime2, y = Compound))+
+  #geom_smooth(method = lm(d$Compound~d$Datetime2)) + 
+  geom_smooth() +
+  geom_point()+
+  theme_minimal()+
+  ggtitle("Compound scores plotted against timeline, less repetitions")
+
+#compound score distribution
+ggplot(hashtagd, aes(x = Compound))+
+  geom_density() + 
+  theme_minimal()+
+  ggtitle("Distribution of compound scores, with retweets")
+
+#compound score distribution
+ggplot(uniquehashtagd, aes(x = Compound))+
+  geom_density() + 
+  theme_minimal()+
+  ggtitle("Distribution of compound scores, less repetitions")
+
+
+#mean compound score distribution
+ggplot(merged, aes(x = mean))+
+  geom_density() + 
+  theme_minimal()+
+  ggtitle("Distribution of mean compound scores, less repetitions")
+
+
+#plot the mean
+ggplot(merged, aes(x=Datetime2, y=mean))+
+  geom_smooth()+
+  theme_minimal()+
+  ggtitle("Mean compound scores over time")
+
+#plot distribution of tweets over time
+ggplot(merged, aes(x=Datetime2, y=COUNT))+
+  geom_point()+
+  geom_smooth()+
+  theme_minimal()+
+  ggtitle("Number of tweets over time")
+
+
+```
+

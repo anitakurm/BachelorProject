@@ -65,7 +65,7 @@ bigdata <- data.frame(Date=as.Date(character()),
 colnames(bigdata)<-c("Datetime","ID","Text","Language")
 
 
-for (day in list.dirs(recursive=FALSE)) { #access a day in february
+for (day in list.dirs(recursive=FALSE)) { #access a day in februaryS
    ## do stuff
   for (hour in list.dirs(recursive = FALSE)){ #access an hour in a day
     file.names <- dir(hour, pattern =".json")
