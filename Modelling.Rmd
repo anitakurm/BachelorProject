@@ -1,0 +1,194 @@
+---
+title: "Actual analysis"
+author: "Anita Kurm"
+date: "November 24, 2018"
+output: html_document
+---
+
+I try to explore the relation between sentimental properties of tweets (mean and variance of compound sentiment scores per hour) and temporal proximity to a relevant crisis (proximity to the shootingin Florida in hours).
+
+The data I will use originates from an archive of general Twitter stream grab (captures random 1% of public tweets), filtered for presence of related to gun control keywords, and assigned sentiment mentrics using VADER lexicon for Python.
+Archive: https://archive.org/download/archiveteam-twitter-stream-2018-02
+Filtering procedure: 
+VADER tutorial: http://t-redactyl.io/blog/2017/04/using-vader-to-handle-sentiment-analysis-with-social-media-text.html
+
+Original dataset consists of text of the tweet, compound sentiment score, positive % of the text, neutral % of the text, negative % of the text, datetime and temporal proximity to the mass shooting in hours.
+
+Subdataset 1 is the original dataset summarized on a day-to-day basis. It has 28 observations, one for each day, for the following variables: number of tweets that day, temporal proximity to the event, mean compound score, standard deviation of compound scores, minimal compound score, maximal compound score, variation of the compound score that day.
+
+Subdataset 2 is very similar to subdataset 1, but is summarized on hourly basis. It has one observation per hour present in the filtered dataset. 
+
+```{r}
+setwd("C:/Users/JARVIS/Desktop/Uni/Thesis/BachelorProject")
+
+#libraries
+pacman::p_load(readr,groupdata2,ggplot2,tidyverse,data.table, rethinking)
+
+d <- read.csv("TwitterGunDebateFebruary.csv")
+sd1<-read.csv("TwitterGunDebateFebruaryDAYS.csv")
+sd2<-read.csv("TwitterGunDebateFebruaryHOURS.csv")
+
+```
+
+The questions I need to find answers to are:
+
+1. Assess the relation between tweet rate and temporal proximity to the crisis
+
+  1.1. Tweet rate per day and temporal proximity - subdataset 1
+   
+    Temporal proximity i ~ Normal(mui,sigma)   [likelihood]  Temporal proximity i - temporal proximity for observation i 
+    mui = alpha + betaRd *Rdi     [linear model] Rdi - Day i's tweet rate
+    alpha ~ Normal(0,1)         [alpha prior] 
+    betaRd ~ Normal(0,1)          [beta prior]
+    sigma ~ Uniform(0,1)        [sigma prior] 
+
+```{r}
+#standardize variables 
+sd1$proximity.s <- (sd1$proximity-mean(sd1$proximity))/sd(sd1$proximity)
+sd1$TweetRate.s <- (sd1$Rate-mean(sd1$Rate))/sd(sd1$Rate)
+
+
+#fit the model
+m1<- map(
+  alist(
+    proximity.s~dnorm(mu,sigma),
+    mu<- a + b *TweetRate.s, #linear model
+    a ~ dnorm(0,1), #expect the average tweet rate (when the standardized score = 0) to result in an average standardized proximity (around  0) and you expect the standard deviations to be 1. 2 standard deviations should explain 95% of the variance, So these deviations allow us to be liberal here
+    b ~ dnorm(0,1), #might be not strict enough..
+    sigma~dunif(0,2)
+  ),
+   data= sd1)
+precis(m1)
+plot(precis(m1))
+
+#compute percentile interval of mean
+#define sequence of weights to compute predictions for! 
+#these values will be on the horizontal axis
+TRD.seq <- seq(from=-3, to = 3, length.out = 50) 
+
+#simulate proximity of observations, the default number of simulations is 1000, I increased it here to make simulation variance smoother
+sim.proximity <- sim(m1, data=list(TweetRate.s=TRD.seq), n =1e4)
+
+#summarize the simulated heights
+#find  89% posterior prediction interval of observable proximities, across the values of weight in TRD.seq
+proximity.PI <- apply(sim.proximity,2, PI, prob=0.89)
+
+#use link to compute mu for each sample from posterior
+#and for each value of tweet rate in TRD.seq
+mu <- link(m1, data = data.frame(TweetRate.s=TRD.seq))
+mu.mean <- apply(mu, 2, mean)
+mu.HPDI <- apply( mu , 2 , HPDI , prob=0.89 )
+
+#visualize it
+#show the first 100 values in the distribution of mu at each weight value  
+#use type="n" to hide raw data
+plot(proximity.s ~ TweetRate.s, data=ds1, col= rangi2)
+#plot the MAP line, aka the mean mu for each verbal iq value
+lines(TRD.seq, mu.mean)
+#plot a shaded region for 89%  PI/ draw HPDI region for line
+shade(mu.HPDI, TRD.seq)
+#plot a shaded region for 89% HPDI #draw PI region for simulated ados scores
+shade(proximity.PI, TRD.seq)
+mtext("89% prediction interval for proximity to the event, as a fucntion of Tweet rate.")
+mu<-link(m1)
+mu.mean<-apply(mu, 2, mean)
+mu.HPDI<-apply( mu , 2 , HPDI , prob=0.89 )
+
+#plotting
+plot( mu.mean ~ ds1$proximity.s, col=rangi2 , ylim=range(mu.HPDI) ,
+xlab="Observed Proximity" , ylab="Predicted Proximity" )
+mtext("Tweet rate per day: Predicted proximity values plotted against observed proximity values")
+abline( a = 0 , b = 1, lty = 2)
+for ( i in 1:nrow(d) )
+lines( rep(ds1$proximity.s[i],2) , c(mu.HPDI[1,i],mu.HPDI[2,i]) ,
+col=rangi2 )
+```
+
+  1.2. Tweet rate per hour and temporal proximity - subdataset 2
+   
+    Temporal proximity i ~ Normal(mui,sigma)   [likelihood]  Temporal proximity i - temporal proximity to the event of observation i 
+    mui = alpha + betaRh *Rhi     [linear model] Ri - Observation i's tweet rate
+    alpha ~ Normal(0,1)         [alpha prior] 
+    betaRh ~ Normal(0,1)          [beta prior]
+    sigma ~ Uniform(0,1)        [sigma prior] 
+    
+```{r}
+#standardize variables 
+sd2$proximity.s <- (sd2$proximity-mean(sd2$proximity))/sd(sd2$proximity)
+sd2$TweetRate.s <- (sd2$Rate-mean(sd2$Rate))/sd(sd2$Rate)
+
+
+#fit the model
+m2<- map(
+  alist(
+    proximity.s~dnorm(mu,sigma),
+    mu<- a + b *TweetRate.s, #linear model
+    a ~ dnorm(0,1), #expect the average tweet rate (when the standardized score = 0) to result in an average standardized proximity (around  0) and you expect the standard deviations to be 1. 2 standard deviations should explain 95% of the variance, So these deviations allow us to be liberal here
+    b ~ dnorm(0,1), #might be not strict enough..
+    sigma~dunif(0,2)
+  ),
+   data= sd2)
+precis(m2)
+plot(precis(m2))
+```
+    
+
+2. Assess the relation between sentimental metrics and temporal proximity to the crisis
+
+  2.1. Compound score and temporal proximity - original dataset
+   
+    Temporal proximity i ~ Normal(mui,sigma)   [likelihood]  Temporal proximity i - temporal proximity for observation i (observation might be tweet/hour/day)
+    mui = alpha + betaC *Ci     [linear model] Ci - Observation i's compound score
+    alpha ~ Normal(0,1)         [alpha prior] 
+    betaC ~ Normal(0,1)          [beta prior]
+    sigma ~ Uniform(0,1)        [sigma prior] 
+
+```{r}
+#standardize variables 
+d$proximity.s <- (d$proximity-mean(d$proximity))/sd(d$proximity)
+d$Compound.s <- (d$Compound-mean(d$Compound))/sd(d$Compound)
+
+
+#fit the model
+m3<- map(
+  alist(
+    proximity.s~dnorm(mu,sigma),
+    mu<- a + b *Compound.s, #linear model
+    a ~ dnorm(0,1), #expect the average compound score (when the standardized score = 0) to result in an average standardized proximity (around  0) and you expect the standard deviations to be 1. 2 standard deviations should explain 95% of the variance, So these deviations allow us to be liberal here
+    b ~ dnorm(0,1), #might be not strict enough..
+    sigma~dunif(0,2) #if ados is not standardized, it's mean value is around 13, 5 is a pretty liberal prior. but when standardized the mean value is 0 and 
+  ),
+   data= d)
+precis(m3)
+plot(precis(m3))
+
+```
+
+  2.2.a Positive percentage and temporal proximity - original dataset
+   
+    Temporal proximity i ~ Normal(mui,sigma)   [likelihood]  Temporal proximity i - temporal proximity for observation i (observation might be tweet/hour/day)
+    mui = alpha + betaP *Pi     [linear model] Pi - Observation i's positive %
+    alpha ~ Normal(0,1)         [alpha prior] 
+    betaP ~ Normal(0,1)          [beta prior]
+    sigma ~ Uniform(0,1)        [sigma prior] 
+
+  2.2.b Negative percentage and temporal proximity - original dataset
+   
+    Temporal proximity i ~ Normal(mui,sigma)   [likelihood]  Temporal proximity i - temporal proximity for observation i (observation might be tweet/hour/day)
+    mui = alpha + betaNeg *Negi     [linear model] Negi - Observation i's negative %
+    alpha ~ Normal(0,1)         [alpha prior] 
+    betaNeg ~ Normal(0,1)          [beta prior]
+    sigma ~ Uniform(0,1)        [sigma prior] 
+
+  2.2.c Neutral percentage and temporal proximity - original dataset
+   
+    Temporal proximity i ~ Normal(mui,sigma)   [likelihood]  Temporal proximity i - temporal proximity for observation i (observation might be tweet/hour/day)
+    mui = alpha + betaNeu *Neui     [linear model] Neui - Observation i's neutral %
+    alpha ~ Normal(0,1)         [alpha prior] 
+    betaNeu ~ Normal(0,1)          [beta prior]
+    sigma ~ Uniform(0,1)        [sigma prior] 
+    
+```{r}
+
+```
+
