@@ -48,31 +48,37 @@ d$Datetime<-as.character.Date(d$Datetime)
 d$Datetime<-sub('\\+0000', '', d$Datetime) # Changes only the 1st pattern match per string
 d$Datetime<- as.POSIXct(d$Datetime, format="%a %b %d %H:%M:%S %Y")
 
-d$day<-as.factor(format(d$Datetime, "%d"))
-d$hour<-as.factor(format(d$Datetime, "%d %H"))
-d$minute<-as.factor(format(d$Datetime, "%d %H:%M"))
+d$day<-as.factor(format(d$Datetime, "%b %d"))
+d$hour<-as.factor(format(d$Datetime, "%b %d %H"))
+d$minute<-as.factor(format(d$Datetime, "%b %d %H:%M"))
 d$event <- as.POSIXct("Wed Feb 14 19:21", format="%a %b %d %H:%M")
 d$proximity<-difftime(d$Datetime,d$event,units="hours")
+
 
 
 #########Summarize per time unit 
 statsday<-d %>%
   group_by(day) %>%
-  summarise(meanD=mean(Compound), sdD=sd(Compound), minD=min(Compound),maxD=max(Compound), varD=var(Compound), rateD=n(), posD=mean(Positive), negD=mean(Negative), neutD=mean(Neutral))
+  summarise(meanD=mean(Compound), sdD=sd(Compound), minD=min(Compound),maxD=max(Compound), varD=var(Compound), rateD=n(), posD=mean(Positive), negD=mean(Negative), neutD=mean(Neutral), proximityD=mean(proximity))
 
 statshour<-d %>%
   group_by(hour) %>%
-  summarise(meanH=mean(Compound), sdH=sd(Compound), minH=min(Compound),maxH=max(Compound), varH=var(Compound), rateH=n(), posH=mean(Positive), negH=mean(Negative), neutH=mean(Neutral))
+  summarise(meanH=mean(Compound), sdH=sd(Compound), minH=min(Compound),maxH=max(Compound), varH=var(Compound), rateH=n(), posH=mean(Positive), negH=mean(Negative), neutH=mean(Neutral), proximityH=mean(proximity))
 
 statsminute<-d %>%
   group_by(minute) %>%
-  summarise(meanM=mean(Compound), sdM=sd(Compound), minM=min(Compound),maxM=max(Compound), varM=var(Compound), rateM=n(), posM=mean(Positive), negM=mean(Negative), neutM=mean(Neutral))
+  summarise(meanM=mean(Compound), sdM=sd(Compound), minM=min(Compound),maxM=max(Compound), varM=var(Compound), rateM=n(), posM=mean(Positive), negM=mean(Negative), neutM=mean(Neutral), proximityM=mean(proximity))
+
+
+write.csv(d,"processed_separate.csv")
+write.csv(statsday,"processed_days.csv")
+write.csv(statshour,"processed_hours.csv")
+write.csv(statsminute,"processed_minute.csv")
 
 ##########Merge summary stats with the original dataframe
-ultimate<-merge(d,statsday)
-ultimate<-merge(ultimate,statshour)
-ultimate<-merge(ultimate,statsminute)
-
-write.csv(ultimate,"processeddata.csv")
+# ultimate<-merge(d,statsday)
+# ultimate<-merge(ultimate,statshour)
+# ultimate<-merge(ultimate,statsminute)
+#write.csv(ultimate,"processeddataHEAVY.csv")
 ```
 

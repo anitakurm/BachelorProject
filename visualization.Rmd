@@ -5,15 +5,28 @@ date: "November 26, 2018"
 output: html_document
 ---
 
+Upload libraries, data
+```{r}
+#libraries
+pacman::p_load(ggplot2)
+
+ds <- read.csv("processed_separate.csv")
+days<-read.csv("processed_days.csv")
+hours<-read.csv("processed_hours.csv")
+minutes<-read.csv("processed_minute.csv")
+```
+
+
 Old plots
 
 ```{r}
 #compound scores through the time
-ggplot(merged, aes(x = Datetime, y = Compound))+
+ggplot(ds, aes(x = Datetime, y = Compound))+
   geom_smooth() +
   geom_point()+
   theme_minimal()+
-  ggtitle("Compound scores plotted against timeline")
+  ggtitle("Compound scores plotted against timeline:all tweets")
+
 
 #compound scores through the time
 ggplot(uniquemerged, aes(x = Datetime, y = Compound))+
