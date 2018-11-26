@@ -4,6 +4,8 @@ author: "Anita Kurm"
 date: "November 26, 2018"
 output: html_document
 ---
+Thanks for useful visualization tips: http://www.sthda.com/english/wiki/be-awesome-in-ggplot2-a-practical-guide-to-be-highly-effective-r-software-and-data-visualization
+
 
 Upload libraries, data
 ```{r}
@@ -14,57 +16,58 @@ ds <- read.csv("processed_separate.csv")
 days<-read.csv("processed_days.csv")
 hours<-read.csv("processed_hours.csv")
 minutes<-read.csv("processed_minute.csv")
+
+#for some reason date format did not register
+ds$Datetime<- as.POSIXct(ds$Datetime, format="%Y-%m-%d %H:%M:%S")
+ds$event <- as.POSIXct("Wed Feb 14 19:21", format="%a %b %d %H:%M")
+ds$proximity<-difftime(ds$Datetime,ds$event,units="hours")
+
+##don't know if i'll need these
+# days$day<- as.POSIXct(days$day,format="%b %d")
+# hours$hour<-as.POSIXct(hours$hour, "%b %d %H")
+# minutes$minute<-as.POSIXct(minutes$minute, "%b %d %H:%M")
+
 ```
 
 
-Old plots
+Original dataset: separate tweets
 
 ```{r}
 #compound scores through the time
-ggplot(ds, aes(x = Datetime, y = Compound))+
-  geom_smooth() +
+plot1<-ggplot(ds, aes(x = Datetime, y = Compound))+
+  geom_smooth(aes(size=3)) +
   geom_point()+
   theme_minimal()+
-  ggtitle("Compound scores plotted against timeline:all tweets")
+  theme(text = element_text(size=50))+
+  ggtitle("Compound scores against timeline:all tweets")+
+  theme(plot.title = element_text(size = 50))
 
-
-#compound scores through the time
-ggplot(uniquemerged, aes(x = Datetime, y = Compound))+
-  geom_smooth() +
-  #geom_point()+
-  theme_minimal()+
-  ggtitle("Compound sentiment scores plotted against timeline, no repetitions")
-
+ggsave("compoundall.png", width = 50, height = 50, units = "cm")
 
 #Positive and negative scores through the time
-ggplot(uniquemerged, aes(x = Datetime))+
+plot2<-ggplot(ds, aes(x = Datetime))+
   geom_smooth(aes(y=Positive, color='Positive')) +
   geom_smooth(aes(y=Negative, color='Negative')) +
-  #geom_point()+
+  geom_smooth(aes(y=Neutral, color='Neutral')) +
   theme_minimal()+
-  ggtitle("Sentiment scores plotted against timeline, no repetitions")
-
+  xlab("Time") +
+  ylab("% in a tweet") +
+  theme(text = element_text(size=50))+
+  ggtitle("Positive, negative, and neutral % over time: all tweets")+
+  theme(plot.title = element_text(size = 50))+
+  theme(legend.key.size = unit(2, "cm"))
+ggsave("posnegneutALL.png", width = 50, height = 50, units = "cm")
 
 #compound score distribution
-ggplot(uniquemerged, aes(x = Compound))+
+ggplot(ds, aes(x = Compound))+
   geom_density() + 
   theme_minimal()+
-  ggtitle("Distribution of compound sentiment scores")
+  ggtitle("Distribution of compound sentiment scores: all tweets")
 
-#compound score distribution
-ggplot(uniquehashtagd, aes(x = Compound))+
-  geom_density() + 
-  theme_minimal()+
-  ggtitle("Distribution of compound scores, less repetitions")
+```
 
-
-#mean compound score distribution
-ggplot(merged, aes(x = mean))+
-  geom_density() + 
-  theme_minimal()+
-  ggtitle("Distribution of mean compound scores, less repetitions")
-
-
+Subdataset plots:
+```{r}
 #plot the mean
 ggplot(merged, aes(x=Datetime2, y=mean))+
   geom_smooth()+
