@@ -1,0 +1,68 @@
+---
+title: "Visualizations"
+author: "Anita Kurm"
+date: "November 26, 2018"
+output: html_document
+---
+
+Old plots
+
+```{r}
+#compound scores through the time
+ggplot(merged, aes(x = Datetime, y = Compound))+
+  geom_smooth() +
+  geom_point()+
+  theme_minimal()+
+  ggtitle("Compound scores plotted against timeline")
+
+#compound scores through the time
+ggplot(uniquemerged, aes(x = Datetime, y = Compound))+
+  geom_smooth() +
+  #geom_point()+
+  theme_minimal()+
+  ggtitle("Compound sentiment scores plotted against timeline, no repetitions")
+
+
+#Positive and negative scores through the time
+ggplot(uniquemerged, aes(x = Datetime))+
+  geom_smooth(aes(y=Positive, color='Positive')) +
+  geom_smooth(aes(y=Negative, color='Negative')) +
+  #geom_point()+
+  theme_minimal()+
+  ggtitle("Sentiment scores plotted against timeline, no repetitions")
+
+
+#compound score distribution
+ggplot(uniquemerged, aes(x = Compound))+
+  geom_density() + 
+  theme_minimal()+
+  ggtitle("Distribution of compound sentiment scores")
+
+#compound score distribution
+ggplot(uniquehashtagd, aes(x = Compound))+
+  geom_density() + 
+  theme_minimal()+
+  ggtitle("Distribution of compound scores, less repetitions")
+
+
+#mean compound score distribution
+ggplot(merged, aes(x = mean))+
+  geom_density() + 
+  theme_minimal()+
+  ggtitle("Distribution of mean compound scores, less repetitions")
+
+
+#plot the mean
+ggplot(merged, aes(x=Datetime2, y=mean))+
+  geom_smooth()+
+  theme_minimal()+
+  ggtitle("Mean compound scores over time")
+
+#plot distribution of tweets over time
+ggplot(merged, aes(x=Datetime2, y=COUNT))+
+  geom_point()+
+  geom_smooth()+
+  theme_minimal()+
+  ggtitle("Number of tweets over time")
+```
+

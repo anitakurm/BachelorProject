@@ -1,0 +1,78 @@
+---
+title: "Pre-processing of the filtered data"
+author: "Anita Kurm"
+date: "November 20, 2018"
+output: html_document
+---
+
+```{r}
+pacman::p_load(ggplot2,dplyr,lme4)
+
+list_of_files<-NULL
+
+
+#merge data 6th to 16th of February to then find sentiment scores
+list_of_files <- list.files(pattern = ".csv", recursive = T)
+
+alldata<-NULL
+alldata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(alldata)<-c("Datetime","ID","Text","Language")
+
+
+for (csvfile in list_of_files){
+  d<-read.csv(csvfile)
+  alldata<-rbind(alldata,d)
+}
+
+
+#download to perform sentiment analysis in python, because vader is there
+write.csv(alldata,"alldatanosent.csv")
+
+```
+
+
+Pre-processing of the sentiment data
+```{r}
+#download the same thing but with sentiment scores
+d<-read.csv('alldatasent.csv')
+
+#remove the useless X column
+d$X<-NULL
+
+#########CHANGE THE DATE FORMAT + ADD EXTRA DATE VARIABLES 
+d$Datetime<-as.character.Date(d$Datetime)
+#remove +0000
+d$Datetime<-sub('\\+0000', '', d$Datetime) # Changes only the 1st pattern match per string
+d$Datetime<- as.POSIXct(d$Datetime, format="%a %b %d %H:%M:%S %Y")
+
+d$day<-as.factor(format(d$Datetime, "%d"))
+d$hour<-as.factor(format(d$Datetime, "%d %H"))
+d$minute<-as.factor(format(d$Datetime, "%d %H:%M"))
+d$event <- as.POSIXct("Wed Feb 14 19:21", format="%a %b %d %H:%M")
+d$proximity<-difftime(d$Datetime,d$event,units="hours")
+
+
+#########Summarize per time unit 
+statsday<-d %>%
+  group_by(day) %>%
+  summarise(meanD=mean(Compound), sdD=sd(Compound), minD=min(Compound),maxD=max(Compound), varD=var(Compound), rateD=n(), posD=mean(Positive), negD=mean(Negative), neutD=mean(Neutral))
+
+statshour<-d %>%
+  group_by(hour) %>%
+  summarise(meanH=mean(Compound), sdH=sd(Compound), minH=min(Compound),maxH=max(Compound), varH=var(Compound), rateH=n(), posH=mean(Positive), negH=mean(Negative), neutH=mean(Neutral))
+
+statsminute<-d %>%
+  group_by(minute) %>%
+  summarise(meanM=mean(Compound), sdM=sd(Compound), minM=min(Compound),maxM=max(Compound), varM=var(Compound), rateM=n(), posM=mean(Positive), negM=mean(Negative), neutM=mean(Neutral))
+
+##########Merge summary stats with the original dataframe
+ultimate<-merge(d,statsday)
+ultimate<-merge(ultimate,statshour)
+ultimate<-merge(ultimate,statsminute)
+
+write.csv(ultimate,"processeddata.csv")
+```
+

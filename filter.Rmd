@@ -1,95 +1,785 @@
 ---
-title: "Data filtering"
-author: "Anita Kurm"
-date: "August 17, 2018"
+title: "looping through"
 output: html_document
 ---
 
-
 ```{r}
-#libraries
-pacman::p_load(groupdata2,ggplot2,tidyverse,data.table,dplyr,tidyr,stringr, margittr,tidytext)
+pacman::p_load(jsonlite,dplyr)
 
-#set wd
-setwd("C:/Users/JARVIS/Desktop/Uni/Thesis/data scraping/BachelorProject")
-
-#messy data
-md<- read.csv("ai.csv", header = F)
+########################## Defining the function
+json_to_data<-function(json_file){
+  df<-NULL
+  df <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+  colnames(df)<-c("Datetime","ID","Text","Language")
+  jsond<-lapply(readLines(json_file), fromJSON)
+  for (tweet in jsond){
+  x=length(tweet)
+  if(x < 2){
+    next
+    } else {
+      y<-tweet$lang
+      if(y=="en"){
+        userinfo<-tweet$user
+        if(('extended_tweet' %in% tweet)){
+          tweettextlist<-tweet$extended_tweet
+          tweettext<-tweettextlist$full_text
+        } else{
+          tweettext<-tweet$text
+        }
+          temporary<-c(tweet$created_at,userinfo$screen_name,tweettext, tweet$lang)
+          temporary2<-as.matrix(temporary)
+          temp3<-t(temporary2)
+          tempdata<-as.data.frame(temp3)
+          colnames(tempdata)<-c("Datetime","ID","Text","Language")
+          df<-rbind(df,tempdata)
+          colnames(df)<-c("Datetime","ID","Text","Language") #resetting names
+        
+      } else{
+        next}
+      }
+}
+  #gundata<-dplyr::filter(df, grepl('gun|guns|gundebate|2A|2ndamendment|guncontrol|gunsense|gunban|gunsafety|gunrights|NRA|2AShallNotBeInfringed|shooting', Text))
+  gundata<-dplyr::filter(df, grepl('firearm|#gun|#guns|#gundebate|gun debate|second amendment|#2A|2ndamendment|2nd amendment|gunsensepatriot|momsdemand|nowaynra|gunskill|gunviolence|gun violence|guncontrol|gun control|gunsense|gun sense|gun ban|gunsafety|gun safety|gunrights|gun rights|protect2a|progun|nogunregistry|gungrab|gunfriendly|#NRA|2AShallNotBeInfringed|#shooting|mass shooting', Text))
+  return(gundata)
+}
 ```
 
-Trying to make it a tidy dataframe
+
+Learning how to do a loop through a day
+```{r}
+# #set wd
+# setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02")
+# 
+# bigdata<-NULL
+# bigdata <- data.frame(Date=as.Date(character()),
+#                  ID=character(),
+#                  Text=character(),
+#                  Language=character())
+# colnames(bigdata)<-c("Datetime","ID","Text","Language")
+# 
+# #Make a loop through just one day
+# days<-list.dirs(recursive = F)
+# day1<-days[1]
+# hours1<-list.dirs(day1)
+# 
+# jsonfile<-("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/01/23/50.json.bz2")
+# jsond<-lapply(readLines(jsonfile), fromJSON)
+# tryhard<-json_to_data(jsonfile)
+# 
+# #############set wd to ./01
+# setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/01")
+# hours1<-list.dirs(recursive = F)
+# 
+# #imitating big data
+# notbigdata<-NULL
+# notbigdata <- data.frame(Date=as.Date(character()),
+#                  ID=character(),
+#                  Text=character(),
+#                  Language=character())
+# colnames(notbigdata)<-c("Datetime","ID","Text","Language")
+# 
+# 
+# for(hour in hours1){
+#   file.names <- dir(hour, pattern =".json")
+#   for(f in file.names){
+#     daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/01")
+#     #x <- "R Tutorial"
+#     #gsub("ut","ot",x)
+#     #paste("file", "number", "32", sep = "_")
+#     #[1] "file_number_32"
+#     pathtofile=paste(daypath,hour,f,sep = "/")
+#     #print(pathtofile) #works
+#     tryh<-json_to_data(pathtofile)
+#     notbigdata<-rbind(notbigdata,tryh)
+#   }
+# }
+
+```
+
+
+That worked, make a loop that'd go through all days in February
 
 ```{r}
-#remove all of unnecessary symbols
-#ref: ( Hicks , 2014) 
-#md$V2<- gsub("b'RT", " ", md$V2)
-#md$V2<- gsub("b'", " ", md$V2)
-#md$V2<- gsub("b\"", " ", md$V2)
-#md$V2<- gsub("(RT|via)((?:\\b\\W*@\\w+)+)", " ", md$V2)
-#md$V2<- gsub("@\\w+", " ", md$V2)
-#md$V2<- gsub("[[:punct:]]", " ", md$V2)
-#md$V2<- gsub("[[:digit:]]", " ", md$V2)
-#md$V2<- gsub("http\\w+", "", md$V2)
-#md$V2<- gsub("[ \t]{2,}", " ", md$V2)
-#md$V2<- gsub("^\\s+|\\s+$", " ", md$V2)
+# #set wd
+# setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02")
+# 
+# bigdata<-NULL
+# bigdata <- data.frame(Date=as.Date(character()),
+#                  ID=character(),
+#                  Text=character(),
+#                  Language=character())
+# colnames(bigdata)<-c("Datetime","ID","Text","Language")
+# 
+# days<-list.dirs(recursive = FALSE)
+# 
+# for (day in days) { #access a day in february
+#   
+#   wd=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02")
+#   #day=gsub("./", "", c)
+#   newpath=paste(wd,day,sep = "/")
+#   # do stuff
+#   #hourlist[1]<-("00")
+#   for (hour in hourlist){ #access an hour in a day
+#     # newpath2<-paste(newpath,hour,sep = "/")
+#     for(f in file.names){
+#       extranewpath<-paste(newpath,hour,f,sep = "/")
+#       tinydata<-json_to_data(f)
+#       bigdata<-rbind(bigdata,tinydata)
+#     }
+#   }
+# }
+
+```
+
+I give up on the loooooop, tired of stupid errors, so I am doing it manually
+
+It's stupid, but it works! Doing the same thing 28 times manually is not that bad..
+
+```{r}
+pacman::p_load(jsonlite,dplyr)
+
+#############set wd to ./01
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/01")
+hours1<-list.dirs(recursive = F)
+
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
 
 
-
-
-#make a function instead
-messy_to_clean <- function(messytweetsvariable) {
-  symbolslist<-list("b'RT","b'","b\"","(RT|via)((?:\\b\\W*@\\w+)+)","@\\w+","[[:punct:]]","[[:digit:]]","http\\w+","[ \t]{2,}","^\\s+|\\s+$")
-  for(i in symbolslist){
-  messytweetsvariable <- gsub(i, " ", messytweetsvariable)
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/01")
+    #x <- "R Tutorial"
+    #gsub("ut","ot",x)
+    #paste("file", "number", "32", sep = "_")
+    #[1] "file_number_32"
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    #print(pathtofile) #works
+    tryh1<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh1)
   }
-  cleantweetsvariable<-messytweetsvariable
-  return(cleantweetsvariable)
 }
 
-#test it!
-md$V2<- messy_to_clean(md$V2)
-#it works!!!!!!
+write.csv(bigdata, file = "bigdata1n.csv")
 
-#give ID to every tweet
-md$ID<- as.numeric(md$V1)
+#############set wd to ./02
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/02")
+hours1<-list.dirs(recursive = F)
 
-#keep only unique tweets..OR IS IT NECESSARY????
-#d<-subset(md,!duplicated(md$ID))
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
 
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/02")
+    #x <- "R Tutorial"
+    #gsub("ut","ot",x)
+    #paste("file", "number", "32", sep = "_")
+    #[1] "file_number_32"
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    #print(pathtofile) #works
+    tryh2<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh2)
+  }
+}
 
-#break down tweets into separate words, keeping ID and timestamp
-List <- strsplit(md$V2, " ")
-words<-data.frame(ID=rep(md$ID, sapply(List, length)),Time=rep(md$V1, sapply(List, length)), Word=unlist(List))
-write.csv(words, "words.csv")
-```
+write.csv(bigdata, file = "bigdata2n.csv")
 
+#############set wd to ./03
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/03")
+hours1<-list.dirs(recursive = F)
 
-Words dataframe still has non-words, empty rows...
-Adding a corpus should help?
-
-```{r}
-
-#from tidytext
-corpus1<-get_sentiments("nrc")
-colnames(corpus1)[1] <- "Word"
-
-
-#merge tweet words with corpus, leaving only words that are contained in both
-# merge two data frames by word
-total <- merge(words,corpus1, by="Word")
-total$sentiment<-as.factor(total$sentiment)
-
-
-#visualize it?
-ggplot(total, aes(total$Time, , color=sentiment )) +
-  geom_dotplot()+
-  facet_wrap(~sentiment)
-
-
-#model. time~sentiment ?
-
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
 
 
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/03")
+    #x <- "R Tutorial"
+    #gsub("ut","ot",x)
+    #paste("file", "number", "32", sep = "_")
+    #[1] "file_number_32"
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    #print(pathtofile) #works
+    tryh3<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh3)
+  }
+}
+write.csv(bigdata, file = "bigdata3n.csv")
 
+#############set wd to ./04
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/04")
+hours1<-list.dirs(recursive = F)
+
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/04")
+    #x <- "R Tutorial"
+    #gsub("ut","ot",x)
+    #paste("file", "number", "32", sep = "_")
+    #[1] "file_number_32"
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    #print(pathtofile) #works
+    tryh4<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh4)
+  }
+}
+write.csv(bigdata, file = "bigdata4n.csv")
+
+#############set wd to ./05
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/05")
+hours1<-list.dirs(recursive = F)
+
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/05")
+    #x <- "R Tutorial"
+    #gsub("ut","ot",x)
+    #paste("file", "number", "32", sep = "_")
+    #[1] "file_number_32"
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    #print(pathtofile) #works
+    tryh5<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh5)
+  }
+}
+
+write.csv(bigdata, file = "bigdata5n.csv")
+
+#############set wd to ./06
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/06")
+hours1<-list.dirs(recursive = F)
+
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/06")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh6<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh6)
+  }
+}
+
+write.csv(bigdata, file = "bigdata6n.csv")
+
+#############set wd to ./07
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/07")
+hours1<-list.dirs(recursive = F)
+
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/07")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh7<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh7)
+  }
+}
+
+write.csv(bigdata, file = "bigdata7n.csv")
+
+#############set wd to ./08
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/08")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/08")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh8<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh8)
+  }
+}
+write.csv(bigdata, file = "bigdata8n.csv")
+
+#############set wd to ./09
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/09")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/09")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh9<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh9)
+  }
+}
+write.csv(bigdata, file = "bigdata9n.csv")
+
+#############set wd to ./10
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/10")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/10")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh10<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh10)
+  }
+}
+
+write.csv(bigdata, file = "bigdata10n.csv")
+
+#############set wd to ./11
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/11")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/11")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh11<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh11)
+  }
+}
+write.csv(bigdata, file = "bigdata11n.csv")
+
+#############set wd to ./12
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/12")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/12")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh12<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh12)
+  }
+}
+write.csv(bigdata, file = "bigdata12n.csv")
+
+#############set wd to ./13
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/13")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/13")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh13<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh13)
+  }
+}
+
+write.csv(bigdata, file = "bigdata13n.csv")
+
+#############set wd to ./14
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/14")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/14")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh14<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh14)
+  }
+}
+write.csv(bigdata, file = "bigdata14.csv")
+
+#############set wd to ./15
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/15")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/15")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh15<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh15)
+  }
+}
+
+write.csv(bigdata, file = "bigdata15.csv")
+
+#############set wd to ./16
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/16")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/16")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh16<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh16)
+  }
+}
+write.csv(bigdata, file = "bigdata16.csv")
+
+#############set wd to ./17
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/17")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/17")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh17<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh17)
+  }
+}
+write.csv(bigdata, file = "bigdata17.csv")
+
+#############set wd to ./18
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/18")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/18")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh18<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh18)
+  }
+}
+write.csv(bigdata, file = "bigdata18.csv")
+
+#############set wd to ./19
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/19")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/19")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh18<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh18)
+  }
+}
+write.csv(bigdata, file = "bigdata19.csv")
+
+#############set wd to ./20
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/20")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/20")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh18<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh18)
+  }
+}
+write.csv(bigdata, file = "bigdata20.csv")
+
+#############set wd to ./21
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/21")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/21")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh18<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh18)
+  }
+}
+write.csv(bigdata, file = "bigdata21.csv")
+
+#############set wd to ./22
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/22")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/22")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh18<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh18)
+  }
+}
+write.csv(bigdata, file = "bigdata22.csv")
+
+#############set wd to ./23
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/23")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/23")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh18<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh18)
+  }
+}
+write.csv(bigdata, file = "bigdata23.csv")
+
+#############set wd to ./24
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/24")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/24")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh18<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh18)
+  }
+}
+write.csv(bigdata, file = "bigdata24.csv")
+
+#############set wd to ./25
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/25")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/25")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh18<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh18)
+  }
+}
+write.csv(bigdata, file = "bigdata25.csv")
+
+#############set wd to ./26
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/26")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/26")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh18<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh18)
+  }
+}
+write.csv(bigdata, file = "bigdata26.csv")
+
+#############set wd to ./27
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/27")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/27")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh18<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh18)
+  }
+}
+write.csv(bigdata, file = "bigdata27.csv")
+
+#############set wd to ./28
+setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/28")
+hours1<-list.dirs(recursive = F)
+bigdata<-NULL
+bigdata <- data.frame(Date=as.Date(character()),
+                 ID=character(),
+                 Text=character(),
+                 Language=character())
+colnames(bigdata)<-c("Datetime","ID","Text","Language")
+
+for(hour in hours1){
+  file.names <- dir(hour, pattern =".json")
+  for(f in file.names){
+    daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/28")
+    pathtofile=paste(daypath,hour,f,sep = "/")
+    tryh18<-json_to_data(pathtofile)
+    bigdata<-rbind(bigdata,tryh18)
+  }
+}
+write.csv(bigdata, file = "bigdata28.csv")
 ```
 
