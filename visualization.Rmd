@@ -12,73 +12,207 @@ Upload libraries, data
 #libraries
 pacman::p_load(ggplot2)
 
-ds <- read.csv("processed_separate.csv")
-days<-read.csv("processed_days.csv")
-hours<-read.csv("processed_hours.csv")
-minutes<-read.csv("processed_minute.csv")
+# ds <- read.csv("processed_separate.csv")
+# days<-read.csv("processed_days.csv")
+# hours<-read.csv("processed_hours.csv")
+# minutes<-read.csv("processed_minute.csv")
+
+data<-read.csv("processeddataPolarization.csv")
 
 #for some reason date format did not register
-ds$Datetime<- as.POSIXct(ds$Datetime, format="%Y-%m-%d %H:%M:%S")
-ds$event <- as.POSIXct("Wed Feb 14 19:21", format="%a %b %d %H:%M")
-ds$proximity<-difftime(ds$Datetime,ds$event,units="hours")
-
-##don't know if i'll need these
-# days$day<- as.POSIXct(days$day,format="%b %d")
-# hours$hour<-as.POSIXct(hours$hour, "%b %d %H")
-# minutes$minute<-as.POSIXct(minutes$minute, "%b %d %H:%M")
-
+data$Datetime<- as.POSIXct(data$Datetime, format="%Y-%m-%d %H:%M:%S")
+data$event <- as.POSIXct("Wed Feb 14 19:21", format="%a %b %d %H:%M")
+data$proximity<-difftime(data$Datetime,data$event,units="hours")
 ```
 
 
 Original dataset: separate tweets
 
 ```{r}
-#compound scores through the time
-plot1<-ggplot(ds, aes(x = Datetime, y = Compound))+
-  geom_smooth(aes(size=3)) +
-  geom_point()+
+#compound scores over time time
+plot1<-ggplot(data, aes(x = Datetime, y = Compound))+
+  geom_point(aes(colour=Compound))+
   theme_minimal()+
+  xlab("Time") +
+  ylab("Compound sentiment score") +
   theme(text = element_text(size=50))+
-  ggtitle("Compound scores against timeline:all tweets")+
-  theme(plot.title = element_text(size = 50))
+  ggtitle("Individual compound scores of all tweets against timeline")+
+  theme(plot.title = element_text(size = 50))+
+  theme(legend.key.size = unit(2, "cm"))
 
-ggsave("compoundall.png", width = 50, height = 50, units = "cm")
+ggsave("compoundallNomeanCol.png", width = 50, height = 50, units = "cm")
+
+#hourly mean
+pd <- position_dodge(0.1) # move them .05 to the left and right
+plot2<-ggplot(data, aes(x = proximity, y = meanH))+
+  ylim(-1.0, 1.0)+
+  geom_point(aes(colour=meanH))+
+  geom_smooth() +
+  theme_minimal()+
+  xlab("Temporal proximity in hours") +
+  ylab("Hour's average score") +
+  theme(text = element_text(size=25))+
+  ggtitle("Mean sentiment score against temporal proximity")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))+
+  geom_vline(aes(xintercept=0), linetype=4,colour="black")
+
+  #geom_point(aes(x = Datetime, y = meanH, colour = 'red'), size = 3) +
+ggsave("compoundmeanNN.png", width = 25, height = 25, units = "cm")
+
+#Emotional polarization over time
+plot3<-ggplot(data, aes(x = proximity, y = EmoPol))+
+  geom_point(aes(colour=EmoPol))+
+  geom_smooth() +
+  theme_minimal()+
+  xlab("Temporal proximity in hours") +
+  ylab("Polarization index") +
+  theme(text = element_text(size=25))+
+  ggtitle("Polarization indeces of sentiment scores\n against temporal proximity")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))+
+  geom_vline(aes(xintercept=0), linetype=4,colour="black")
+ggsave("EmoPolNN.png", width = 25, height = 25, units = "cm")
+
+#Emotional polarization break down
+
+
+#Political polarization over time
+plot4<-ggplot(data, aes(x = Datetime, y = PolPol))+
+  geom_point(aes(colour=PolPol))+
+  ylim(0, 1.0)+
+  geom_smooth() +
+  theme_minimal()+
+  xlab("Time") +
+  ylab("Polarization index") +
+  theme(text = element_text(size=25))+
+  ggtitle("Political polarization indeces on hourly basis")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+
+ggsave("PolPol.png", width = 25, height = 25, units = "cm")
 
 #Positive and negative scores through the time
-plot2<-ggplot(ds, aes(x = Datetime))+
+plot5<-ggplot(data, aes(x = Datetime))+
   geom_smooth(aes(y=Positive, color='Positive')) +
   geom_smooth(aes(y=Negative, color='Negative')) +
   geom_smooth(aes(y=Neutral, color='Neutral')) +
   theme_minimal()+
   xlab("Time") +
   ylab("% in a tweet") +
-  theme(text = element_text(size=50))+
-  ggtitle("Positive, negative, and neutral % over time: all tweets")+
-  theme(plot.title = element_text(size = 50))+
-  theme(legend.key.size = unit(2, "cm"))
-ggsave("posnegneutALL.png", width = 50, height = 50, units = "cm")
+  theme(text = element_text(size=25))+
+  ggtitle("Neutral, negative, and positive % over time: all tweets")+
+  scale_fill_discrete(breaks=c("Neutral","Negative","Positive"))+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("posnegneutALL2.png", width = 25, height = 25, units = "cm")
+
+#Tweet rate over time
+plot6<-ggplot(data, aes(x = proximity, y= rateH))+
+  geom_point(aes(colour=rateH))+
+  geom_smooth() +
+  theme_minimal()+
+  xlab("Temporal proximity in hours") +
+  ylab("Number of tweets per hour") +
+  theme(text = element_text(size=25))+
+  ggtitle("Hourly tweet rate against temporal proximity")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))+
+  geom_vline(aes(xintercept=0), linetype=4,colour="black")
+ggsave("tweetrateNN.png", width = 25, height = 25, units = "cm")
 
 #compound score distribution
-ggplot(ds, aes(x = Compound))+
-  geom_density() + 
+plot7<-ggplot(data, aes(x = Compound))+
+  geom_histogram(binwidth=0.025) +
   theme_minimal()+
-  ggtitle("Distribution of compound sentiment scores: all tweets")
+  ggtitle("General distribution of compound sentiment scores: all tweets")
+ggsave("sentimentdensity.png", width = 25, height = 25, units = "cm")
+
+data$CompCategory<-ifelse(data$Compound==0,"CatNeut", ifelse(data$Compound<0, "CatNeg","CatPos"))
+data$CompCategory<-as.factor(data$CompCategory)
+
+plot8<-ggplot(data, aes(x = CompCategory))+
+  geom_histogram() +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 25))+
+  ggtitle("General distribution of compound sentiment scores: all tweets")
+ggsave("categorycount.png", width = 25, height = 25, units = "cm")
 
 ```
 
-Subdataset plots:
+Let's look at temporal proximity:
 ```{r}
-#plot the mean
-ggplot(merged, aes(x=Datetime2, y=mean))+
-  geom_smooth()+
-  theme_minimal()+
-  ggtitle("Mean compound scores over time")
-
-#plot distribution of tweets over time
-ggplot(merged, aes(x=Datetime2, y=COUNT))+
+#temporal proximity vs tweet rate
+plot8<-ggplot(data, aes(x = proximity, y = rateH))+
   geom_point()+
-  geom_smooth()+
+  geom_smooth() +
   theme_minimal()+
-  ggtitle("Number of tweets over time")
+  xlab("Temporal proximity in hours") +
+  ylab("Tweet rate") +
+  theme(text = element_text(size=25))+
+  ggtitle("Relationship of tweet rate and temporal proximity")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("rateproximity.png", width = 25, height = 25, units = "cm")
+
+#distrubution of temporal proximity
+plot9<-ggplot(data, aes(x = proximity))+
+  geom_histogram() +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 25))+
+  ggtitle("General distribution of temporal proximity")
+ggsave("proximityhist.png", width = 25, height = 25, units = "cm")
+
+
+#mean and polarization
+plot10<-ggplot(data, aes(x = meanH, y = EmoPol))+
+  geom_point()+
+  geom_smooth() +
+  theme_minimal()+
+  xlab("Mean compound score") +
+  ylab("Polarization index") +
+  theme(text = element_text(size=25))+
+  ggtitle("Relationship of emotional state and polarization")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("meanpolarization.png", width = 25, height = 25, units = "cm")
+
+plot11<-ggplot(data, aes(x = Compound, y = EmoPol))+
+  geom_point()+
+  geom_smooth() +
+  theme_minimal()+
+  xlab("Compound score") +
+  ylab("Polarization index") +
+  theme(text = element_text(size=25))+
+  ggtitle("Relationship of individual sentiment score and polarization")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("compoundpolarization.png", width = 25, height = 25, units = "cm")
+
+#standardize
+data$meanH.s<-(data$meanH-mean(data$meanH))/sd(data$meanH)
+data$rateH.s<-(data$rateH-mean(data$rateH))/sd(data$rateH)
+data$EmoPol.s<-(data$EmoPol-mean(data$EmoPol, na.rm=TRUE))/sd(data$EmoPol, na.rm=TRUE)
+
+plot12<-ggplot(data, aes(x = proximity))+
+  geom_smooth(aes(y=rateH.s, color='Tweet Rate')) +
+  geom_point(aes(y=rateH.s, color='Tweet Rate'))+
+  geom_smooth(aes(y=meanH.s, color='Mean sentiment score')) +
+  geom_point(aes(y=meanH.s, color='Mean sentiment score'))+
+  geom_smooth(aes(y=EmoPol.s, color='Polarization index')) +
+  geom_point(aes(y=EmoPol.s, color='Polarization index'))+
+  theme_minimal()+
+  xlab("Temporal proximity") +
+  ylab("Standardized predictor value") +
+  theme(text = element_text(size=25))+
+  ggtitle("Predictors in relation to proximity")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))+
+  geom_vline(aes(xintercept=0), linetype=4,colour="black")
+ggsave("predictorproxeventFI.png", width = 25, height = 25, units = "cm")
+
+
+write.csv(data, "useformodelling.csv")
+
 ```
 

@@ -5,7 +5,7 @@ date: "November 24, 2018"
 output: html_document
 ---
 
-I try to explore the relation between sentimental properties of tweets (mean and variance of compound sentiment scores per hour) and temporal proximity to a relevant crisis (proximity to the shootingin Florida in hours).
+I try to explore the relation between sentimental properties of tweets (mean and polarization of compound sentiment scores per hour) and temporal proximity to a relevant crisis (proximity to the shootingin Florida in hours).
 
 The data I will use originates from an archive of general Twitter stream grab (captures random 1% of public tweets), filtered for presence of related to gun control keywords, and assigned sentiment mentrics using VADER lexicon for Python.
 Archive: https://archive.org/download/archiveteam-twitter-stream-2018-02
@@ -24,15 +24,16 @@ setwd("C:/Users/JARVIS/Desktop/Uni/Thesis/BachelorProject")
 #libraries
 pacman::p_load(readr,groupdata2,ggplot2,tidyverse,data.table, rethinking)
 
-ds <- read.csv("processed_separate.csv")
-days<-read.csv("processed_days.csv")
-hours<-read.csv("processed_hours.csv")
-minutes<-read.csv("processed_minute.csv")
+#data
+data = read.csv("useformodelling.csv")
+data$X = NULL
+data$X.1 = NULL
+data$rateH=as.numeric(data$rateH)
 
 #for some reason date format did not register
-ds$Datetime<- as.POSIXct(ds$Datetime, format="%Y-%m-%d %H:%M:%S")
-ds$event <- as.POSIXct("Wed Feb 14 19:21", format="%a %b %d %H:%M")
-ds$proximity<-difftime(ds$Datetime,ds$event,units="hours")
+data$Datetime<- as.POSIXct(data$Datetime, format="%Y-%m-%d %H:%M:%S")
+data$event <- as.POSIXct("Wed Feb 14 19:21", format="%a %b %d %H:%M")
+data$proximity<-difftime(data$Datetime,data$event,units="hours")
 
 ##don't know if i'll need these
 # days$day<- as.POSIXct(days$day,format="%b %d")
@@ -45,40 +46,53 @@ The questions I need to find answers to are:
 
 1. Assess the relation between tweet rate and temporal proximity to the crisis
 
-  1.1. Tweet rate per day and temporal proximity - subdataset 1
+  Tweet rate per hour and temporal proximity
    
-    Temporal proximity i ~ Normal(mui,sigma)   [likelihood]  Temporal proximity i - temporal proximity for observation i 
-    mui = alpha + betaRd *Rdi     [linear model] Rdi - Day i's tweet rate
-    alpha ~ Normal(0,1)         [alpha prior] 
-    betaRd ~ Normal(0,1)          [beta prior]
-    sigma ~ Uniform(0,1)        [sigma prior] 
+    Temporal proximity i ~ Normal(mui,sigma)   [likelihood]  Temporal proximity i - temporal proximity on row i 
+    mui = alpha + betaR *Ri   [linear model] The mean on row i =  intercept (mean when tweet rate=0) + slope (change in mean per unit of change in tweet rate)*tweet rate on row i
+    alpha ~ Normal(-150,100)    [alpha prior] I expext that when tweet rate = 0, mean temporal proximity is negative
+    betaR ~ Normal(0,1)         [beta prior] Expected slope distribution
+    sigma ~ Uniform(0,1)        [sigma prior] Expected sigma of temporal proximity i
 
 ```{r}
 #standardize variables 
-sd1$proximity.s <- (sd1$proximity-mean(sd1$proximity))/sd(sd1$proximity)
-sd1$TweetRate.s <- (sd1$Rate-mean(sd1$Rate))/sd(sd1$Rate)
+data$proximity.s <- (data$proximity-mean(data$proximity))/sd(data$proximity)
+data$rateH.s <- (data$rateH-mean(data$rateH))/sd(data$rateH)
 
 
 #fit the model
 m1<- map(
   alist(
-    proximity.s~dnorm(mu,sigma),
-    mu<- a + b *TweetRate.s, #linear model
-    a ~ dnorm(0,1), #expect the average tweet rate (when the standardized score = 0) to result in an average standardized proximity (around  0) and you expect the standard deviations to be 1. 2 standard deviations should explain 95% of the variance, So these deviations allow us to be liberal here
-    b ~ dnorm(0,1), #might be not strict enough..
-    sigma~dunif(0,2)
+    proximity~dnorm(mu,sigma),
+    mu<- a + b *rateH, #linear model
+    a ~ dnorm(130,100), # I expext that when tweet rate = 0, i.e. regardless tweet rate, mean temporal proximity is positive, i.e. covers the 200h past the event
+    b ~ dnorm(0,2000), #might be not strict enough..
+    sigma~dunif(0,130)
   ),
-   data= sd1)
+   data= data)
 precis(m1)
 plot(precis(m1))
+
+#fit the model
+m1.5<- map(
+  alist(
+    proximity.s~dnorm(mu,sigma),
+    mu<- a + b *rateH.s, #linear model
+    a ~ dnorm(0,100), # I expext that when tweet rate = 0, i.e. regardless tweet rate, mean temporal proximity is positive, i.e. covers the 200h past the event
+    b ~ dnorm(0,5), #might be not strict enough..
+    sigma~dunif(0,100)
+  ),
+   data= data)
+precis(m1.5)
+plot(precis(m1.5))
 
 #compute percentile interval of mean
 #define sequence of weights to compute predictions for! 
 #these values will be on the horizontal axis
-TRD.seq <- seq(from=-3, to = 3, length.out = 50) 
+TRD.seq <- seq(from=1, to = 1500, length.out = 1500) 
 
 #simulate proximity of observations, the default number of simulations is 1000, I increased it here to make simulation variance smoother
-sim.proximity <- sim(m1, data=list(TweetRate.s=TRD.seq), n =1e4)
+sim.proximity <- sim(m1, data=list(rateH=TRD.seq), n =1e4)
 
 #summarize the simulated heights
 #find  89% posterior prediction interval of observable proximities, across the values of weight in TRD.seq
@@ -86,14 +100,14 @@ proximity.PI <- apply(sim.proximity,2, PI, prob=0.89)
 
 #use link to compute mu for each sample from posterior
 #and for each value of tweet rate in TRD.seq
-mu <- link(m1, data = data.frame(TweetRate.s=TRD.seq))
+mu <- link(m1, data = data.frame(rateH=TRD.seq))
 mu.mean <- apply(mu, 2, mean)
 mu.HPDI <- apply( mu , 2 , HPDI , prob=0.89 )
 
 #visualize it
 #show the first 100 values in the distribution of mu at each weight value  
 #use type="n" to hide raw data
-plot(proximity.s ~ TweetRate.s, data=ds1, col= rangi2)
+plot(proximity ~ rateH, data=data, col= rangi2)
 #plot the MAP line, aka the mean mu for each verbal iq value
 lines(TRD.seq, mu.mean)
 #plot a shaded region for 89%  PI/ draw HPDI region for line
@@ -101,12 +115,13 @@ shade(mu.HPDI, TRD.seq)
 #plot a shaded region for 89% HPDI #draw PI region for simulated ados scores
 shade(proximity.PI, TRD.seq)
 mtext("89% prediction interval for proximity to the event, as a fucntion of Tweet rate.")
+
 mu<-link(m1)
 mu.mean<-apply(mu, 2, mean)
 mu.HPDI<-apply( mu , 2 , HPDI , prob=0.89 )
 
 #plotting
-plot( mu.mean ~ ds1$proximity.s, col=rangi2 , ylim=range(mu.HPDI) ,
+plot( mu.mean ~ data$proximity, col=rangi2 , ylim=range(mu.HPDI) ,
 xlab="Observed Proximity" , ylab="Predicted Proximity" )
 mtext("Tweet rate per day: Predicted proximity values plotted against observed proximity values")
 abline( a = 0 , b = 1, lty = 2)

@@ -1,0 +1,61 @@
+---
+title: "Modelling vol. 2"
+author: "Anita Kurm"
+date: "December 2, 2018"
+output: html_document
+---
+
+```{r}
+#libraries 
+pacman::p_load(dplyr,magrittr,rethinking,brms,brmstools,ggplot2,caret)
+#pacman::p_install_gh("mvuorre/brmstools")
+#brms, brmstools, caret
+library(brms)
+
+#data
+data = read.csv("useformodelling.csv")
+data$X = NULL
+data$X.1 = NULL
+data$rateH=as.numeric(data$rateH)
+#data$rateH.s=
+
+#Look at the outcome function - which likelihood function do we want?
+#Outcome is diff in time - poisson 
+dens(data$proximity)
+mean(data$proximity) #130.0573 
+sd(data$proximity)  #113.2073 -> intercept prior: normal(130.06, 113.21) or student_t(3, 121, 134) ///sd: student_t(3, 0, 134) and sigma student_t(3, 0, 134) <- from brms:: get_prior
+
+mean(data$rateH)
+sd(data$rateH)
+
+
+#ProbDetect model
+m1_formula <- brms::brmsformula(proximity ~ rateH.s) 
+m5_formula <- brms::brmsformula(proximity ~ ratheH.s+ meanH.s + EmoPol.s+ meanH.s*EmoPol.s +(1|Name))
+brms::get_prior(m1_formula,data) #Asking the model which priors it recommend
+
+prior = c(prior(dgamma(x=3,shape = 2),class = Intercept),
+          prior(normal(0,5), class = b, coef = rateH.s),
+          prior(normal(0,5), class = b, coef = meanH.s),
+          prior(normal(0,5), class = b, coef = EmoPol.s))
+          #prior(normal(0,0.5), class = b, coef = probDetect))
+          #prior(student_t(0,2), class = sigma)) 
+
+m5 <- brm(m5_formula,
+          family = dgamma(), #We assume our likelihood function to be poisson
+          prior =  NULL, #our list of pre-defined priors
+          data = data,
+          warmup = 100, # increased number of warmup and iterations
+          iter = 500,
+          cores = 3,
+          chain = 3)
+
+summary(m5)
+plot(m1)
+
+```
+
+Mean is distributed as normal with a mean of 156 and a SD of 10
+SD is distributed as uniform, with a range of 0 to 50
+
+Our prior for height is distributed as normal with the previous mean and the previous SD

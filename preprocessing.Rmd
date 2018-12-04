@@ -76,9 +76,33 @@ write.csv(statshour,"processed_hours.csv")
 write.csv(statsminute,"processed_minute.csv")
 
 ##########Merge summary stats with the original dataframe
-# ultimate<-merge(d,statsday)
-# ultimate<-merge(ultimate,statshour)
-# ultimate<-merge(ultimate,statsminute)
-#write.csv(ultimate,"processeddataHEAVY.csv")
+ultimate<-merge(d,statshour)
+
+#should we try get the polarization score
+# it needs frequency vectors 
+#let's create frequency vactors for every hour
+
+
+#let's categorize it 
+#negative -0.20 to -1.0
+#neutral -0.20 to 0.20
+#positive 0.20 to 1.0
+d$CompCategory<-ifelse(d$Compound==0,"CatNeut", ifelse(d$Compound<0, "CatNeg","CatPos"))
+d$CompCategory<-as.numeric(d$CompCategory)
+
+
+#political category
+d$PolitCategory<-ifelse(grepl("gunrights|gun rights|protect2a|progun|nogunregistry|gungrab|gunfriendly|2AShallNotBeInfringed",d$Tweet),"Rights",ifelse(grepl("gunsensepatriot|momsdemand|nowaynra|gunskill|gunviolence|gun violence|guncontrol|gun control|gunsense|gun sense|gun ban|gunsafety|gun safety", d$Tweet),"Control", "General"))
+
+
+statshour2<-d %>%
+  group_by(hour) %>%
+  summarise(meanH=mean(Compound), sdH=sd(Compound), minH=min(Compound),maxH=max(Compound), varH=var(Compound), rateH=n(), posH=mean(Positive), negH=mean(Negative), neutH=mean(Neutral), proximityH=mean(proximity), EmoPol=polarization(table(CompCategory)), PolPol=polarization(table(PolitCategory)))
+
+#merge
+ultimate2<-merge(d,statshour2)
+
+write.csv(ultimate2,"processeddataPolarization.csv")
+
 ```
 

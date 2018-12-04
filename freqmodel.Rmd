@@ -1,0 +1,202 @@
+---
+title: "Frequentist+Cross-validation"
+author: "Anita Kurm"
+date: "December 3, 2018"
+output: html_document
+---
+
+Let's do some good old frequentist stats. Like here: https://github.com/kurmie/Assignment-2/blob/master/A1_P2_LangASD_trajectories.Rmd
+
+Prepare data:
+```{r}
+#libraries 
+pacman::p_load(ggplot2,dplyr,lme4,MuMIn,lmerTest,gstat,stringr,plyr,caret,modelr,ModelMetrics,Metrics, tidyverse,simr,MASS)
+
+#data
+data = read.csv("useformodelling.csv")
+
+#prepare data
+data$X = NULL
+data$X.1 = NULL
+data$rateH=as.numeric(data$rateH)
+
+#square predictors
+data$rate2 <-(data$rateH)^2
+data$mean2<-(data$meanH)^2
+data$EmoPol2<-(data$EmoPol)^2
+```
+
+Test hypotheses:
+
+Hypothesis 1: Shortly after a tragic event, public engagement in the gun control debate increases.
+Prediction: Positive and small values of temporal proximity to the Stoneman Douglas High shooting will associate with higher rate of relevant to the debate tweets per unit of time
+
+Temporal proximity ~ Tweet Rate per hour + (1|Username)
+or
+Temporal proximity ~ Tweet Rate per hour^2 + (1|Username)
+
+```{r}
+#Model 1
+m1 <- lmer(proximity~rateH+(1|Name), data=data)
+summary(m1) #output
+r.squaredGLMM(m1)
+plotm1<-ggplot(data, aes(rateH, proximity))+
+  geom_point()+
+  stat_smooth(method = "lm", formula = y ~ x)+
+  theme_minimal()+
+  xlab("Tweet rate") +
+  ylab("Temporal proximity") +
+  theme(text = element_text(size=25))+
+  ggtitle("Model 1: The line represents the linear effect of tweet rate on proximity")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("model1.png", width = 25, height = 25, units = "cm")
+
+
+m2<- lmer(proximity~1+rateH+I(rateH^2)+(1|Name), data=data) #quadratic
+summary(m2)
+r.squaredGLMM(m2)
+plotm2<-ggplot(data, aes(rateH, proximity))+
+  geom_point()+
+  stat_smooth(method = "lm", formula = y ~ poly(x, 2))+
+  theme_minimal()+
+  xlab("Tweet rate") +
+  ylab("Temporal proximity") +
+  theme(text = element_text(size=25))+
+  ggtitle("Model 2: The line represents the quadratic effect of tweet rate on proximity")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("model2.png", width = 25, height = 25, units = "cm")
+
+
+m3<- lmer(proximity~1+rateH+I(rateH^2)+I(rateH^3)+(1|Name), data=data) #cubic
+summary(m3)
+r.squaredGLMM(m3)
+plotm3<-ggplot(data, aes(rateH, proximity))+
+  geom_point()+
+  stat_smooth(method = "lm", formula = y ~ poly(x, 3))+
+  theme_minimal()+
+  xlab("Tweet rate") +
+  ylab("Temporal proximity") +
+  theme(text = element_text(size=25))+
+  ggtitle("Model 3: The line represents the cubic effect of tweet rate on proximity")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("model3.png", width = 25, height = 25, units = "cm")
+
+
+m4<- lmer(proximity~1+rateH+I(rateH^2)+I(rateH^3)+I(rateH^4)+(1|Name), data=data) #quartic
+summary(m4)
+r.squaredGLMM(m4)
+plotm4<-ggplot(data, aes(rateH, proximity))+
+  geom_point()+
+  stat_smooth(method = "lm", formula = y ~ poly(x, 4))+
+  theme_minimal()+
+  xlab("Tweet rate") +
+  ylab("Temporal proximity") +
+  theme(text = element_text(size=25))+
+  ggtitle("Model 4: The line represents the quartic effect of tweet rate on proximity")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("model4.png", width = 25, height = 25, units = "cm")
+
+
+
+```
+
+Cubic one looks promising
+```{r}
+m1inv<- lmer(rateH~1+proximity+(1|Name), data=data) #cubic
+summary(m1inv)
+r.squaredGLMM(m1inv)
+plotm1inv<-ggplot(data, aes(proximity, rateH))+
+  geom_point()+
+  stat_smooth(method = "lm", formula = y ~ x)+
+  theme_minimal()+
+  xlab("Proximity") +
+  ylab("Tweet rate") +
+  theme(text = element_text(size=25))+
+  ggtitle("Model 1 inverted: The line represents the linear effect of proximity on tweet rate")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("model1inv.png", width = 25, height = 25, units = "cm")
+
+m2inv<- lmer(rateH~1+proximity+I(proximity^2)+(1|Name), data=data) #cubic
+summary(m2inv)
+r.squaredGLMM(m2inv)
+plotm2inv<-ggplot(data, aes(proximity, rateH))+
+  geom_point()+
+  stat_smooth(method = "lm", formula = y ~ poly(x, 2))+
+  theme_minimal()+
+  xlab("Proximity") +
+  ylab("Tweet rate") +
+  theme(text = element_text(size=25))+
+  ggtitle("Model 2 inverted: The line represents the quadratic effect of proximity on tweet rate")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("model2inv.png", width = 25, height = 25, units = "cm")
+```
+
+
+Let's try rescaling variables
+```{r}
+#new data with scaled variables
+ndata=data
+ndata$rateH<-scale(ndata$rateH)
+ndata$proximity<-scale(ndata$proximity)
+
+#Model 1
+m1sc <- lmer(proximity~rateH+(1|Name), data=ndata)
+summary(m1sc) #output
+r.squaredGLMM(m1sc)
+plotm1<-ggplot(ndata, aes(rateH, proximity))+
+  geom_point()+
+  stat_smooth(method = "lm", formula = y ~ x)+
+  theme_minimal()+
+  xlab("Tweet rate") +
+  ylab("Temporal proximity") +
+  theme(text = element_text(size=25))+
+  ggtitle("Model 1 scaled")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("model1scaled.png", width = 25, height = 25, units = "cm")
+
+
+m2sc<- lmer(proximity~1+rateH+I(rateH^2)+(1|Name), data=ndata) #quadratic
+summary(m2sc)
+r.squaredGLMM(m2sc)
+plotm2<-ggplot(ndata, aes(rateH, proximity))+
+  geom_point()+
+  stat_smooth(method = "lm", formula = y ~ poly(x, 2))+
+  theme_minimal()+
+  xlab("Tweet rate") +
+  ylab("Temporal proximity") +
+  theme(text = element_text(size=25))+
+  ggtitle("Model 2 scaled")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("model2scaled.png", width = 25, height = 25, units = "cm")
+
+```
+
+
+Trying out hyperbolic function
+```{r}
+#(Time~I(1/Requests)) 
+#Model 1
+m1hyp <- lmer(proximity~I(1/rateH)+(1|Name), data=data)
+summary(m1hyp) #output
+r.squaredGLMM(m1hyp)
+plotm1hyp<-ggplot(data, aes(rateH, proximity))+
+  geom_point()+
+  stat_smooth(method = "lm", formula = y ~I(1/x))+
+  theme_minimal()+
+  xlab("Tweet rate") +
+  ylab("Temporal proximity") +
+  theme(text = element_text(size=25))+
+  ggtitle("Model 1 hyperbolic")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("model1hyp.png", width = 25, height = 25, units = "cm")
+```
+

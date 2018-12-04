@@ -6,12 +6,12 @@ Created on Wed Oct 24 17:23:34 2018
 """
 #change working directory
 import os
-os.chdir("C://Users//JARVIS//Desktop//Uni//Thesis//data scraping")
+os.chdir("C://Users//JARVIS//Desktop//Uni//Thesis//data scraping//BachelorProject")
 
 
 #Get data
 import pandas
-df = pandas.read_csv('tryingout.csv',encoding = "ISO-8859-1")
+df = pandas.read_csv('alldatanosent.csv',encoding = "ISO-8859-1")
 
 #check that data is actually there
 print(df)
@@ -65,5 +65,5 @@ twitter_df = DataFrame({'Datetime': datetime,
 twitter_df.head()
 
 #all good, can write csv, all future work is in R 
-twitter_df.to_csv('tryingout10to17.csv')
+twitter_df.to_csv('alldatasent.csv')
 
