@@ -104,39 +104,6 @@ ggsave("model4.png", width = 25, height = 25, units = "cm")
 
 ```
 
-Cubic one looks promising
-```{r}
-m1inv<- lmer(rateH~1+proximity+(1|Name), data=data) #cubic
-summary(m1inv)
-r.squaredGLMM(m1inv)
-plotm1inv<-ggplot(data, aes(proximity, rateH))+
-  geom_point()+
-  stat_smooth(method = "lm", formula = y ~ x)+
-  theme_minimal()+
-  xlab("Proximity") +
-  ylab("Tweet rate") +
-  theme(text = element_text(size=25))+
-  ggtitle("Model 1 inverted: The line represents the linear effect of proximity on tweet rate")+
-  theme(plot.title = element_text(size = 25))+
-  theme(legend.key.size = unit(1, "cm"))
-ggsave("model1inv.png", width = 25, height = 25, units = "cm")
-
-m2inv<- lmer(rateH~1+proximity+I(proximity^2)+(1|Name), data=data) #cubic
-summary(m2inv)
-r.squaredGLMM(m2inv)
-plotm2inv<-ggplot(data, aes(proximity, rateH))+
-  geom_point()+
-  stat_smooth(method = "lm", formula = y ~ poly(x, 2))+
-  theme_minimal()+
-  xlab("Proximity") +
-  ylab("Tweet rate") +
-  theme(text = element_text(size=25))+
-  ggtitle("Model 2 inverted: The line represents the quadratic effect of proximity on tweet rate")+
-  theme(plot.title = element_text(size = 25))+
-  theme(legend.key.size = unit(1, "cm"))
-ggsave("model2inv.png", width = 25, height = 25, units = "cm")
-```
-
 
 Let's try rescaling variables
 ```{r}
@@ -180,9 +147,9 @@ ggsave("model2scaled.png", width = 25, height = 25, units = "cm")
 ```
 
 
-Trying out hyperbolic function
+Trying out exponential growth
 ```{r}
-#(Time~I(1/Requests)) 
+#y~x + offset(log(x))
 #Model 1
 m1hyp <- lmer(proximity~I(1/rateH)+(1|Name), data=data)
 summary(m1hyp) #output
@@ -198,5 +165,70 @@ plotm1hyp<-ggplot(data, aes(rateH, proximity))+
   theme(plot.title = element_text(size = 25))+
   theme(legend.key.size = unit(1, "cm"))
 ggsave("model1hyp.png", width = 25, height = 25, units = "cm")
+
+
+m1hyp3 <- lmer(proximity~rateH+I(offset(log(rateH)))+(1|Name), data=data)
+summary(m1hyp3) #output
+r.squaredGLMM(m1hyp3)
+plotm1hyp<-ggplot(data, aes(rateH, proximity))+
+  geom_point()+
+  stat_smooth(method = "lm", formula = y ~x+I(offset(log(x))))+
+  theme_minimal()+
+  xlab("Tweet rate") +
+  ylab("Temporal proximity") +
+  theme(text = element_text(size=25))+
+  ggtitle("Hypothesis 1. y~x + offset(log(x))")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("model1hyp3.png", width = 25, height = 25, units = "cm")
+```
+
+
+Alternative way. What if we had another outcome variable
+```{r}
+m1inv<- lmer(rateH~1+proximity+(1|Name), data=data) #cubic
+summary(m1inv)
+r.squaredGLMM(m1inv)
+plotm1inv<-ggplot(data, aes(proximity, rateH))+
+  geom_point()+
+  stat_smooth(method = "lm", formula = y ~ x)+
+  theme_minimal()+
+  xlab("Proximity") +
+  ylab("Tweet rate") +
+  theme(text = element_text(size=25))+
+  ggtitle("Model 1 inverted: The line represents the linear effect of proximity on tweet rate")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("model1inv.png", width = 25, height = 25, units = "cm")
+
+m2inv<- lmer(rateH~1+proximity+I(proximity^2)+(1|Name), data=data) #cubic
+summary(m2inv)
+r.squaredGLMM(m2inv)
+plotm2inv<-ggplot(data, aes(proximity, rateH))+
+  geom_point()+
+  stat_smooth(method = "lm", formula = y ~ poly(x, 2))+
+  theme_minimal()+
+  xlab("Proximity") +
+  ylab("Tweet rate") +
+  theme(text = element_text(size=25))+
+  ggtitle("Model 2 inverted: The line represents the quadratic effect of proximity on tweet rate")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("model2inv.png", width = 25, height = 25, units = "cm")
+
+m1hyp3inv<- lmer(rateH~proximity+I(offset(log(proximity)))+(1|Name), data=data)
+summary(m1hyp3inv) #output
+r.squaredGLMM(m1hyp3inv)
+plotm1hyp<-ggplot(data, aes(proximity, rateH))+
+  geom_point()+
+  stat_smooth(method = "lm", formula = y ~x+I(log(x)))+
+  theme_minimal()+
+  xlab("Proximity") +
+  ylab("Tweet rate") +
+  theme(text = element_text(size=25))+
+  ggtitle("Inverted model: Growth and decay y~x + offset(log(x))")+
+  theme(plot.title = element_text(size = 25))+
+  theme(legend.key.size = unit(1, "cm"))
+ggsave("model1hyp3inv.png", width = 25, height = 25, units = "cm")
 ```
 
