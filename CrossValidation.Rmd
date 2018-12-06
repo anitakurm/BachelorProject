@@ -33,12 +33,8 @@ rmse_test = NULL
 n=1
 SCORES = as.data.frame(NULL)
 
-#Create list of the models to test
+#Create list of the models to test. TRYING OUT WITH JUST TWO
 Ms = c("proximity~rateH+(1|Name)",
-       # "proximity~1+rateH+I(rateH^2)+(1|Name)",
-       # "Duration~SearchType+Fixation+(1+SearchType+Fixation|fold_id)",
-       # "Duration~SearchType+Trial+Fixation+(1+SearchType+Trial+Fixation|fold_id)",
-       # "Duration~SearchType*Trial+(1+SearchType*Trial|fold_id)",
        "proximity~1+rateH+I(rateH^2)+(1|Name)"
        )
 
@@ -46,7 +42,7 @@ Ms = c("proximity~rateH+(1|Name)",
 data$day<- as.factor(data$day)
 data$fold_id = as.numeric(data$day)
 
-#Run Loop for all models, RUN SEVERAL TIMES, SOMETIMES IT WORKS, I PROMISE
+#Run Loop for all models, RESULTING VECTORS ARE TOO BIG
 for (M in Ms) {
   #Create folds
   Folds = createFolds(unique(data$fold_id), 4)
