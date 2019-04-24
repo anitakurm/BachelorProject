@@ -4,51 +4,72 @@ output: html_document
 ---
 
 ```{r}
+#load librarires, pacman pload installs missing libraries too
 pacman::p_load(jsonlite,dplyr)
 
-########################## Defining the function
+
+########################## Defining the function to return a dataframe with relevant tweets from all json nested lists
 json_to_data<-function(json_file){
+  #making sure the variable df is empty
   df<-NULL
+  #create a dataframe with columns for Date, ID, text of the tweet, and language in right format
   df <- data.frame(Date=as.Date(character()),
                  ID=character(),
                  Text=character(),
                  Language=character())
+  #name columns
   colnames(df)<-c("Datetime","ID","Text","Language")
+  
+  #read the json file into R: every tweet has its own list of lists with the text being hidden somewhere inside
   jsond<-lapply(readLines(json_file), fromJSON)
+  
+  #loop for looking through every list (tweet) in jsond
   for (tweet in jsond){
-  x=length(tweet)
-  if(x < 2){
-    next
+  x=length(tweet) #need to see how big the list is, if it is less than two, it is empty
+  if(x < 2){ 
+    next #skip empty lists
     } else {
-      y<-tweet$lang
+      y<-tweet$lang #to save resources for filtering, better make sure the tweet is in english first
       if(y=="en"){
-        userinfo<-tweet$user
+        userinfo<-tweet$user #userinfo needed to account for repeated measures (multiple tweets per user)for the validity of stats
+        
+        #some tweets have 'extended tweet' list and then the full text is in there
+        #some tweets have only short/incomplete versions of the full text, take it if we are desperate (the else condition)
         if(('extended_tweet' %in% tweet)){
           tweettextlist<-tweet$extended_tweet
+          #extract the fll text
           tweettext<-tweettextlist$full_text
-        } else{
+        } else{ 
           tweettext<-tweet$text
         }
+        #make a temporary list with extrected time, user name, text of the tweet (full or incomplete), and language
           temporary<-c(tweet$created_at,userinfo$screen_name,tweettext, tweet$lang)
+          #make a matrix out of the list so it can be easily appended to the big dataframe
           temporary2<-as.matrix(temporary)
+          #transpose the given matrix for better merging
           temp3<-t(temporary2)
+          #make it as a data frame with the column names matching the main dataframe 'df'
           tempdata<-as.data.frame(temp3)
           colnames(tempdata)<-c("Datetime","ID","Text","Language")
+          
+          #bind the separate tweet with the main data frame
           df<-rbind(df,tempdata)
           colnames(df)<-c("Datetime","ID","Text","Language") #resetting names
         
       } else{
-        next}
+        next} #skip non-english tweets
       }
 }
-  #gundata<-dplyr::filter(df, grepl('gun|guns|gundebate|2A|2ndamendment|guncontrol|gunsense|gunban|gunsafety|gunrights|NRA|2AShallNotBeInfringed|shooting', Text))
+  #filter the entire dataframe for containment of any of the strings listed in the parantheses 
   gundata<-dplyr::filter(df, grepl('firearm|#gun|#guns|#gundebate|gun debate|second amendment|#2A|2ndamendment|2nd amendment|gunsensepatriot|momsdemand|nowaynra|gunskill|gunviolence|gun violence|guncontrol|gun control|gunsense|gun sense|gun ban|gunsafety|gun safety|gunrights|gun rights|protect2a|progun|nogunregistry|gungrab|gunfriendly|#NRA|2AShallNotBeInfringed|#shooting|mass shooting', Text))
+  
+  #the output of the function: gun related tweets with datetime, id, text, and language
   return(gundata)
 }
 ```
 
 
-Learning how to do a loop through a day
+Learning how to do a loop through a day. It is commented out since it takes a long time to run
 ```{r}
 # #set wd
 # setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02")
@@ -134,42 +155,60 @@ That worked, make a loop that'd go through all days in February
 
 ```
 
-I give up on the loooooop, tired of stupid errors, so I am doing it manually
+I give up on the loooooop, tired of stupid errors, so I am doing it manually, as I really need to move on!!!
 
 It's stupid, but it works! Doing the same thing 28 times manually is not that bad..
 
 ```{r}
+#load libraries
 pacman::p_load(jsonlite,dplyr)
+
+#all bits here start with setting the working directory to the day we want to filter
 
 #############set wd to ./01
 setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/01")
+#list the files in the directory: evey directory (day) has multiple folders (hours)
 hours1<-list.dirs(recursive = F)
 
+#reset the bigdata variable
 bigdata<-NULL
+
+#create new bigdata data frame with correct column names
 bigdata <- data.frame(Date=as.Date(character()),
                  ID=character(),
                  Text=character(),
                  Language=character())
 colnames(bigdata)<-c("Datetime","ID","Text","Language")
 
-
+#go through the list of files (in this case folders) in the directory
 for(hour in hours1){
+  #list all files in the current folder that are of json format
   file.names <- dir(hour, pattern =".json")
+  #go through every json file in the list of json files
   for(f in file.names){
+    #define the string for the name of the directory, so we can automatize finding the path to the particular file
     daypath=("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/01")
-    #x <- "R Tutorial"
-    #gsub("ut","ot",x)
+    
+    #####Example of smth we want to do, but instead of writing parts manually we want to keep track of where in the loop we are
     #paste("file", "number", "32", sep = "_")
     #[1] "file_number_32"
+    
+    #Construct the string for the path that automatically takes wd,hour, and file based on where we are in the loop
     pathtofile=paste(daypath,hour,f,sep = "/")
-    #print(pathtofile) #works
+    #print(pathtofile) #test if it works.. it does! Resulting string can actually be used as the path
+    
+    #apply our json_to_data function to the file specified in the path..
     tryh1<-json_to_data(pathtofile)
+    
+    #bind the data from the tweet with the full bigdata dataset
     bigdata<-rbind(bigdata,tryh1)
   }
 }
 
+#create a csv file for the first directory (day..) 27 more to go
 write.csv(bigdata, file = "bigdata1n.csv")
 
+#############Repeate for every day
 #############set wd to ./02
 setwd("E:/Anita dat/archiveteam-twitter-stream-2018-02/2018/02/02")
 hours1<-list.dirs(recursive = F)
